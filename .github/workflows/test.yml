@@ -25,3 +25,7 @@ jobs:
           node scripts/check-deck.mjs examples/deck-kit-demo/index.html
           node scripts/md-to-deck.mjs examples/md-deck/talk.md --out=/tmp/md-deck
           node scripts/check-deck.mjs /tmp/md-deck/index.html
+      - name: Export the demo (PDF, compact PDF, PPTX, handout)
+        run: |
+          node scripts/export.mjs examples/deck-kit-demo/index.html --pdf --compact --pptx --handout --out=/tmp/export
+          test -s /tmp/export/slides.pdf && test -s /tmp/export/slides-compact.pdf && test -s /tmp/export/slides.pptx && test -s /tmp/export/handout.pdf

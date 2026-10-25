@@ -13,6 +13,8 @@
     "bundle": "node scripts/bundle.mjs"
   },
   "devDependencies": {
+    "jszip": "^3.10.2",
+    "pptxgenjs": "^3.12.0",
     "puppeteer-core": "^23.11.1"
   },
   "license": "MIT"

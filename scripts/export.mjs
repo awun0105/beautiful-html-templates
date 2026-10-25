@@ -8,10 +8,17 @@
  *   --pdf            slides.pdf — one slide per page
  *   --png            slide-01.png … — one image per slide
  *   --handout        handout.pdf — A4, each slide with its speaker notes
- *   --size=1920x1080 render size for PNG / handout images (default 1920x1080)
- *   --settle=600     ms to wait on each slide for charts / entry animations
+ *   --compact        slides-compact.pdf — one JPEG per page: small enough to
+ *                    e-mail (a few MB), but text is not selectable
+ *   --pptx           slides.pptx — one full-slide image per slide, speaker
+ *                    notes in PowerPoint's notes pane (opens in PowerPoint,
+ *                    Keynote, Google Slides; text is not editable)
+ *   --size=1920x1080 render size for images (default 1920x1080)
+ *   --quality=85     JPEG quality for --compact / --pptx
+ *   --settle=400     minimum ms on each slide; it then waits until the slide
+ *                    stops changing (count-ups, growing bars), up to 3 s
  *
- * With none of --pdf/--png/--handout, all three are produced. Every slide is
+ * With no format flag, --pdf --png --handout are produced. Every slide is
  * visited before printing, so content a template draws on entry (charts,
  * counters) is filled in — unlike a plain browser print.
  */
@@ -27,14 +34,15 @@ const opt = Object.fromEntries(args.filter((a) => a.startsWith('--')).map((a) =>
 }));
 const file = args.find((a) => !a.startsWith('--'));
 if (!file) {
-  console.error('Usage: node scripts/export.mjs <deck.html> [--pdf] [--png] [--handout] [--out=DIR] [--size=1920x1080] [--settle=600]');
+  console.error('Usage: node scripts/export.mjs <deck.html> [--pdf] [--png] [--handout] [--compact] [--pptx] [--out=DIR] [--size=1920x1080] [--quality=85] [--settle=400]');
   process.exit(1);
 }
 const deck = resolve(file);
-const want = { pdf: !!opt.pdf, png: !!opt.png, handout: !!opt.handout };
-if (!want.pdf && !want.png && !want.handout) want.pdf = want.png = want.handout = true;
+const want = { pdf: !!opt.pdf, png: !!opt.png, handout: !!opt.handout, compact: !!opt.compact, pptx: !!opt.pptx };
+if (!Object.values(want).some(Boolean)) want.pdf = want.png = want.handout = true;
+const quality = Math.max(30, Math.min(100, +(opt.quality || 85)));
 const [W, H] = String(opt.size || '1920x1080').split('x').map(Number);
-const settle = +(opt.settle || 600);
+const settle = +(opt.settle || 400);
 const out = resolve(opt.out || join(dirname(deck), basename(deck).replace(/\.html?$/i, '') + '-export'));
 mkdirSync(out, { recursive: true });
 
@@ -45,9 +53,11 @@ const lang = await page.evaluate(() => document.documentElement.lang || 'en');
 const title = await page.evaluate(() => document.title || '');
 const done = [];
 
-// ── PNG (also feeds the handout) ───────────────────────────────────────────
-const shots = [];
-if (want.png || want.handout) {
+// ── Screenshots (PNG files, handout, compact PDF, PPTX) ────────────────────
+const shots = [];   // PNG per slide
+const jpegs = [];   // JPEG per slide
+const needPng = want.png || want.handout, needJpeg = want.compact || want.pptx;
+if (needPng || needJpeg) {
   // Hide presenter chrome and the template's fixed controls (dots, counters,
   // deck-stage's pill) so images show only the slide.
   await page.evaluate(() => {
@@ -65,9 +75,12 @@ if (want.png || want.handout) {
   });
   for (let i = 0; i < n; i++) {
     await showSlide(page, i, settle);
-    const buf = Buffer.from(await page.screenshot({ type: 'png' }));
-    shots.push(buf);
-    if (want.png) writeFileSync(join(out, `slide-${String(i + 1).padStart(2, '0')}.png`), buf);
+    if (needPng) {
+      const buf = Buffer.from(await page.screenshot({ type: 'png' }));
+      shots.push(buf);
+      if (want.png) writeFileSync(join(out, `slide-${String(i + 1).padStart(2, '0')}.png`), buf);
+    }
+    if (needJpeg) jpegs.push(Buffer.from(await page.screenshot({ type: 'jpeg', quality })));
   }
   if (want.png) done.push(`${n} PNG files`);
   await page.evaluate(() => {
@@ -89,14 +102,64 @@ if (want.pdf) {
   done.push('slides.pdf');
 }
 
+// Slide titles and notes (HTML for the handout, plain text for PowerPoint).
+const meta = await page.evaluate(() => DeckKit.slides.map((s, i) => {
+  const d = document.createElement('div');
+  d.innerHTML = DeckKit.notesOf(i).replace(/<br\s*\/?>|<\/(p|li|div)>/gi, '\n$&');
+  return {
+    title: DeckKit.titleOf(i), notes: DeckKit.notesOf(i), notesText: d.textContent.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim(),
+    sec: s.getAttribute('data-sec') || '', min: s.getAttribute('data-min') || '',
+  };
+}));
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ── Compact PDF: one JPEG per page ─────────────────────────────────────────
+if (want.compact) {
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>
+    @page { size: ${W}px ${H}px; margin: 0; }
+    html, body { margin: 0; }
+    img { display: block; width: ${W}px; height: ${H}px; break-after: page; }
+    img:last-child { break-after: auto; }
+  </style></head><body>${jpegs.map((b) => `<img src="data:image/jpeg;base64,${b.toString('base64')}">`).join('')}</body></html>`;
+  const cp = await browser.newPage();
+  await cp.setContent(html, { waitUntil: 'load' });
+  writeFileSync(join(out, 'slides-compact.pdf'), await cp.pdf({ preferCSSPageSize: true, printBackground: true }));
+  await cp.close();
+  done.push('slides-compact.pdf');
+}
+
+// ── PowerPoint: full-slide images + speaker notes ─────────────────────────
+if (want.pptx) {
+  let PptxGenJS;
+  try { PptxGenJS = (await import('pptxgenjs')).default; } catch {
+    throw new Error('pptxgenjs is missing. Run `npm install` in the repo root first.');
+  }
+  const pptx = new PptxGenJS();
+  const w = 13.333, h = +(w * H / W).toFixed(3);
+  pptx.defineLayout({ name: 'DECK', width: w, height: h });
+  pptx.layout = 'DECK';
+  pptx.title = title;
+  meta.forEach((m, i) => {
+    const sl = pptx.addSlide();
+    sl.addImage({ data: `image/jpeg;base64,${jpegs[i].toString('base64')}`, x: 0, y: 0, w, h, altText: m.title });
+    const notes = [m.title, [m.sec, m.min && `${m.min} min`].filter(Boolean).join(' · '), m.notesText].filter(Boolean).join('\n\n');
+    if (notes) sl.addNotes(notes);
+  });
+  // addNotes() puts every line in one text run; PowerPoint wants one paragraph per line.
+  const zip = await (await import('jszip')).default.loadAsync(await pptx.write({ outputType: 'nodebuffer' }));
+  for (const name of Object.keys(zip.files).filter((f) => /^ppt\/notesSlides\/notesSlide\d+\.xml$/.test(f))) {
+    const xml = await zip.file(name).async('string');
+    zip.file(name, xml.replace(/(<a:p><a:r>(<a:rPr[^>]*\/>)<a:t>)([^<]*)(<\/a:t><\/a:r>)/g, (m, open, rpr, text, close) =>
+      open + text.split('\n').join(`</a:t></a:r></a:p><a:p><a:r>${rpr}<a:t>`) + close));
+  }
+  writeFileSync(join(out, 'slides.pptx'), await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' }));
+  done.push('slides.pptx');
+}
+
 // ── Handout ────────────────────────────────────────────────────────────────
 if (want.handout) {
-  const meta = await page.evaluate(() => DeckKit.slides.map((s, i) => ({
-    title: DeckKit.titleOf(i), notes: DeckKit.notesOf(i), sec: s.getAttribute('data-sec') || '', min: s.getAttribute('data-min') || '',
-  })));
   const vi = lang.startsWith('vi');
   const T = vi ? { notes: 'Ghi chú', min: 'phút', none: '—' } : { notes: 'Notes', min: 'min', none: '—' };
-  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const pages = meta.map((m, i) => `
     <section>
       <header><b>${i + 1}. ${esc(m.title)}</b><span>${esc([m.sec, m.min && `${m.min} ${T.min}`].filter(Boolean).join(' · '))}</span></header>

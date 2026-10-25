@@ -171,6 +171,7 @@
     .dk-pv .dk-frame { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 10px; overflow: hidden;
       box-shadow: 0 0 0 1px rgba(148,163,184,.25); }
     .dk-pv .dk-frame iframe { position: absolute; left: 0; top: 0; width: 1600px; height: 900px; border: 0; transform-origin: 0 0; pointer-events: none; }
+    .dk-pv .dk-cur iframe { pointer-events: auto; } /* drive sliders/buttons from the laptop */
     .dk-pv .dk-frame .dk-endcard { position: absolute; inset: 0; display: none; place-items: center; color: #94A3B8; font-size: 18px; }
     .dk-pv .dk-frame.dk-end .dk-endcard { display: grid; }
     .dk-pv .dk-frame.dk-end iframe { visibility: hidden; }
@@ -216,6 +217,7 @@
   let synthetic = false;      // true while the generic adapter dispatches its own arrow keys
   let presenterWin = null;    // main window: the presenter popup
   let blank = null;           // 'black' | 'white' | null
+  let pinned = null;          // mirror: the slide the presenter told us to show
 
   // ── Deck discovery ───────────────────────────────────────────────────────
   const topLevelSlides = () =>
@@ -739,16 +741,76 @@
     }
     const rv = e.target.closest && e.target.closest('[data-reveal]');
     if (rv) {
-      const a = document.getElementById(rv.getAttribute('data-reveal'));
-      if (a) {
-        a.hidden = !a.hidden;
-        rv.setAttribute('aria-expanded', String(!a.hidden));
-        const showT = rv.getAttribute('data-reveal-text') || L.reveal;
-        const hideT = rv.getAttribute('data-hide-text') || L.hide;
-        const txt = rv.textContent.trim();
-        if (txt === showT || txt === hideT || !txt) rv.textContent = a.hidden ? showT : hideT;
-      }
+      const id = rv.getAttribute('data-reveal');
+      const a = document.getElementById(id);
+      if (a) { setReveal(rv, !a.hidden); route({ dk: 'reveal', id, hidden: a.hidden }); }
     }
+  }
+  function setReveal(rv, hidden) {
+    const a = document.getElementById(rv.getAttribute('data-reveal'));
+    if (!a) return;
+    a.hidden = hidden;
+    rv.setAttribute('aria-expanded', String(!hidden));
+    const showT = rv.getAttribute('data-reveal-text') || L.reveal;
+    const hideT = rv.getAttribute('data-hide-text') || L.hide;
+    const txt = rv.textContent.trim();
+    if (txt === showT || txt === hideT || !txt) rv.textContent = hidden ? showT : hideT;
+  }
+
+  // ── Sync: audience screen ⇄ presenter previews ───────────────────────────
+  // Slider / input values and revealed answers travel both ways, so moving a
+  // slider on either screen moves it on the other. Controls are addressed by
+  // slide index + position among that slide's inputs.
+  const controlsOf = (s) => Array.from(s.querySelectorAll('input, select, textarea'));
+  let applyingRemote = false;   // true while applying a value that came from the other window
+  function route(msg) {
+    if (applyingRemote) return;
+    if (ROLE === 'main') send(presenterWin, msg);
+    else if (ROLE === 'mirror') send(window.parent, msg);
+  }
+  function onControl(e) {
+    if (applyingRemote) return;
+    const el = e.target;
+    const s = slides.find((x) => x.contains(el));
+    if (!s) return;
+    const n = controlsOf(s).indexOf(el);
+    if (n >= 0) route({ dk: 'control', slide: slides.indexOf(s), n, value: el.value, checked: el.checked });
+  }
+  function applyControl(m) {
+    const s = slides[m.slide];
+    const el = s && controlsOf(s)[m.n];
+    if (!el) return;
+    const check = /^(checkbox|radio)$/.test(el.type);
+    if (check ? el.checked === m.checked : el.value === m.value) return;
+    applyingRemote = true;
+    try {
+      if (check) el.checked = m.checked; else el.value = m.value;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    } finally { applyingRemote = false; }
+  }
+  function applyReveal(m) {
+    const btn = document.querySelector(`[data-reveal="${CSS.escape(m.id)}"]`);
+    const a = document.getElementById(m.id);
+    if (btn && a && a.hidden !== m.hidden) setReveal(btn, m.hidden);
+  }
+  function slideState(i) {
+    const s = slides[i];
+    if (!s) return null;
+    const reveals = Array.from(s.querySelectorAll('[data-reveal]')).map((b) => {
+      const a = document.getElementById(b.getAttribute('data-reveal'));
+      return a ? { id: b.getAttribute('data-reveal'), hidden: a.hidden } : null;
+    }).filter(Boolean);
+    return { dk: 'sync', slide: i, controls: controlsOf(s).map((el) => ({ value: el.value, checked: el.checked })), reveals };
+  }
+  function applySync(m) {
+    m.controls.forEach((c, n) => applyControl({ slide: m.slide, n, value: c.value, checked: c.checked }));
+    m.reveals.forEach(applyReveal);
+  }
+  /** Main window: send the current and next slide's control state to the presenter. */
+  function sendSync() {
+    if (ROLE !== 'main' || !presenterWin || presenterWin.closed) return;
+    [cur, cur + 1].forEach((i) => { const st = slideState(i); if (st) send(presenterWin, st); });
   }
 
   // ── Classroom tools: blank screen, laser, ink ────────────────────────────
@@ -864,8 +926,9 @@
     new ResizeObserver(fit).observe(box);
     fit();
     // Previews load asynchronously; re-send their slide once they're ready.
-    fc.addEventListener('load', () => setTimeout(renderPresenter, 300));
-    fn.addEventListener('load', () => setTimeout(renderPresenter, 300));
+    const reloaded = () => setTimeout(() => { renderPresenter(); send(window.opener, { dk: 'want-sync' }); }, 300);
+    fc.addEventListener('load', reloaded);
+    fn.addEventListener('load', reloaded);
     pv.msg.textContent = window.opener ? L.waiting : L.lost;
     // Say hello until the audience window answers; notice if it goes away.
     let heard = false;
@@ -900,11 +963,21 @@
       // A reloaded audience window re-adopts the presenter that says hello.
       if (m.dk === 'hello' && (!presenterWin || presenterWin.closed)) presenterWin = e.source;
       if (e.source !== presenterWin) return;
-      if (m.dk === 'hello') broadcast();
+      if (m.dk === 'hello') { broadcast(); sendSync(); }
+      if (m.dk === 'want-sync') sendSync();
       if (m.dk === 'go') goto(m.index);
       if (m.dk === 'timer') timerCmd(m.cmd);
       if (m.dk === 'key') handleKey(m.key, m.shift);
+      if (m.dk === 'control') applyControl(m);
+      if (m.dk === 'reveal') applyReveal(m);
     } else if (ROLE === 'presenter') {
+      const fromPreview = pv && (e.source === pv.fc.contentWindow || e.source === pv.fn.contentWindow);
+      if (fromPreview) {
+        // Interaction inside a preview: forward to the audience screen.
+        if (m.dk === 'control' || m.dk === 'reveal') send(window.opener, m);
+        if (m.dk === 'key' && !handleKey(m.key, m.shift)) navKey(m.key, m.shift);
+        return;
+      }
       if (e.source !== window.opener) return;
       if (m.dk === 'state') {
         pv.msg.textContent = '';
@@ -914,9 +987,16 @@
         lastTimerText = '';
         renderTimer();
       }
+      if (m.dk === 'sync' || m.dk === 'control' || m.dk === 'reveal') {
+        const target = m.slide === cur ? pv.fc : m.slide === cur + 1 ? pv.fn : m.dk === 'reveal' ? pv.fc : null;
+        if (target) send(target.contentWindow, m);
+      }
     } else if (ROLE === 'mirror') {
       if (e.source !== window.parent) return;
-      if (m.dk === 'go') goto(m.index);
+      if (m.dk === 'go') { pinned = m.index; goto(m.index); }
+      if (m.dk === 'sync') applySync(m);
+      if (m.dk === 'control') applyControl(m);
+      if (m.dk === 'reveal') applyReveal(m);
     }
   }
 
@@ -935,6 +1015,7 @@
     renderTimer();
     if (ink.on || ink.strokes[i] || ink.strokes[prev]) drawInk();
     broadcast();
+    sendSync();
   }
 
   let last = performance.now();
@@ -948,6 +1029,8 @@
         else if (now >= pending.next) { pending.next = now + 150; adapter.go(pending.i); }
       }
       if (i !== cur && i >= 0 && i < slides.length) onChange(i, cur);
+      // A preview follows the audience screen only; undo moves the template made on its own.
+      if (ROLE === 'mirror' && pinned != null && !pending && i !== pinned) goto(pinned);
       if (cur >= 0) widgetsOn(slides[cur]).forEach((w) => call(w, 'tick', dt));
       cdTick(dt);
     }
@@ -1027,16 +1110,33 @@
     // Navigation: <deck-stage> keeps its own handler in the main window;
     // everywhere else deck-kit drives it so presses queue instead of dropping.
     if (adapter.ownsKeys && ROLE === 'main') return;
+    if (navKey(e.key, e.shiftKey)) { e.preventDefault(); e.stopImmediatePropagation(); }
+  }
+
+  /** Navigation keys. Returns true if the key moved (or tried to move) the deck. */
+  function navKey(key, shift) {
     let d = null, abs = null;
-    if (/^(ArrowRight|ArrowDown|PageDown| |Spacebar)$/.test(e.key)) d = 1;
-    else if (/^(ArrowLeft|ArrowUp|PageUp)$/.test(e.key)) d = -1;
-    else if (e.key === 'Home') abs = 0;
-    else if (e.key === 'End') abs = slides.length - 1;
-    else if (/^[0-9]$/.test(e.key)) abs = e.key === '0' ? 9 : +e.key - 1;
-    else if ((e.key === 'r' || e.key === 'R') && !e.shiftKey) abs = 0;
-    if (d === null && abs === null) return;
-    e.preventDefault(); e.stopImmediatePropagation();
+    if (/^(ArrowRight|ArrowDown|PageDown| |Spacebar)$/.test(key)) d = 1;
+    else if (/^(ArrowLeft|ArrowUp|PageUp)$/.test(key)) d = -1;
+    else if (key === 'Home') abs = 0;
+    else if (key === 'End') abs = slides.length - 1;
+    else if (/^[0-9]$/.test(key)) abs = key === '0' ? 9 : +key - 1;
+    else if ((key === 'r' || key === 'R') && !shift) abs = 0;
+    if (d === null && abs === null) return false;
     if (d !== null) step(d); else if (abs < slides.length) goto(abs);
+    return true;
+  }
+
+  /** Inside a presenter preview: keys belong to the presenter window. */
+  function onMirrorKey(e) {
+    const t = e.target;
+    const typing = t && (t.isContentEditable || /^(TEXTAREA|SELECT)$/.test(t.tagName) ||
+      (t.tagName === 'INPUT' && !/^(range|checkbox|radio|button|submit|reset|color)$/.test(t.type)));
+    const onControl = t && t.tagName === 'INPUT' && /^(range|checkbox|radio)$/.test(t.type);
+    if ((typing || onControl) && NAV_KEYS.test(e.key)) { e.stopImmediatePropagation(); return; }
+    if (typing || e.ctrlKey || e.metaKey || e.altKey) return;
+    send(window.parent, { dk: 'key', key: e.key, shift: e.shiftKey });
+    e.preventDefault(); e.stopImmediatePropagation();
   }
 
   function toggleFullscreen() {
@@ -1098,6 +1198,25 @@
     visitSnaps.set(s, recs);
   }
 
+  /** Resolve once slide i stops changing: its text and inline styles are the
+   *  same on two checks in a row (count-up numbers, growing bars done).
+   *  Canvas pixels and CSS keyframe loops are ignored, so live widgets and
+   *  ambient animation don't hold it up. */
+  async function settleSlide(i, { min = 150, max = 3000 } = {}) {
+    const s = slides[i];
+    if (!s) return;
+    const sig = () => s.textContent + '|' + Array.from(s.querySelectorAll('[style]'), (e) => e.getAttribute('style')).join(';');
+    const t0 = performance.now();
+    await sleep(min);
+    let prev = sig(), same = 0;
+    while (same < 2 && performance.now() - t0 < max) {
+      await sleep(150);
+      const now = sig();
+      same = now === prev ? same + 1 : 0;
+      prev = now;
+    }
+  }
+
   /** Visit every slide once so templates that render on entry (charts,
    *  counters) fill in their content, ending on the slide we started from. */
   async function visitAll({ settle, progress } = {}) {
@@ -1110,7 +1229,7 @@
       const until = performance.now() + 2500;
       while (adapter.index() !== i && performance.now() < until) await sleep(50);
       const extra = parseFloat(slides[i].getAttribute('data-print-delay'));
-      await sleep(isFinite(extra) ? extra : wait);
+      await settleSlide(i, { min: isFinite(extra) ? extra : wait });
       snapSlide(slides[i]);
       if (progress) progress(k + 1, order.length);
     }
@@ -1221,6 +1340,7 @@
       get elapsed() { return elapsed(); },
     },
     visitAll,
+    settle: settleSlide,
     preparePrint,
     cleanupPrint,
     /** Visit every slide (so on-entry content renders), then open the print dialog. */
@@ -1257,11 +1377,14 @@
     if (ROLE === 'mirror') {
       // Preview inside the presenter window: slides only, no chrome, no input.
       ui.host.style.display = 'none';
+      const m = (location.hash || '').match(/^#(\d+)$/);
+      pinned = m ? Math.max(0, Math.min(slides.length - 1, +m[1] - 1)) : 0;
+      if (!adapter.ownsHash && pinned > 0) goto(pinned);
+      document.addEventListener('input', onControl, true);
+      document.addEventListener('change', onControl, true);
+      document.addEventListener('click', onDocClick);
+      window.addEventListener('keydown', onMirrorKey, true);
       requestAnimationFrame(loop);
-      if (!adapter.ownsHash) {
-        const m = (location.hash || '').match(/^#(\d+)$/);
-        if (m && +m[1] > 1) goto(+m[1] - 1);
-      }
       return;
     }
 
@@ -1269,6 +1392,8 @@
     setupInk();
     document.querySelectorAll('[data-countdown]').forEach(cdRender);
     document.addEventListener('click', onDocClick);
+    document.addEventListener('input', onControl, true);
+    document.addEventListener('change', onControl, true);
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('pointermove', onPointerMove, { passive: true });
     window.addEventListener('resize', onResize);

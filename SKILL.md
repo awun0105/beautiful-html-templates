@@ -1,6 +1,6 @@
 ---
 name: beautiful-html-templates
-description: Build stunning, professionally-designed HTML slide decks by choosing from 34 curated visual design systems. Use when the user wants to create an HTML presentation, deck, pitch deck, or slideshow using pre-designed templates with distinct aesthetics and zero dependencies. Every template includes presenter tools via deck-kit.js (presenter view on a second screen, speaker notes, talk timer, laser/draw, interactive canvas widgets with plot helpers, print to PDF); scripts create decks from a template or Markdown, lint them, export PDF/PNG/handouts and bundle offline files.
+description: Build stunning, professionally-designed HTML slide decks by choosing from 34 curated visual design systems. Use when the user wants to create an HTML presentation, deck, pitch deck, or slideshow using pre-designed templates with distinct aesthetics and zero dependencies. Every template includes presenter tools via deck-kit.js (presenter view on a second screen, speaker notes, talk timer, laser/draw, interactive canvas widgets with plot helpers, print to PDF); scripts create decks from a template or Markdown, lint them, export PDF/PNG/handouts/PPTX and bundle offline files.
 ---
 
 # Agent Instructions
@@ -229,7 +229,7 @@ Every template loads `deck-kit.js` after its own navigation script. It finds the
 | Key / action | What it does |
 |---|---|
 | `←` `→` Space PgUp/PgDn Home End `1`–`9` | Navigate. Presses during a template's slide transition are queued, not dropped |
-| `P` | **Presenter view**: a second window with current + next slide, notes, timer and plan. Put it on the laptop, keep the original window on the projector (displays in *extend* mode) |
+| `P` | **Presenter view**: a second window with current + next slide, notes, timer and plan. Put it on the laptop, keep the original window on the projector (displays in *extend* mode). Sliders, inputs and revealed answers stay in sync both ways — you can drive a demo from the laptop's preview |
 | `N` | Speaker-notes panel on this screen (use `P` when the screen is projected) |
 | `M` | Slide menu grouped by section, with planned start minute; click to jump |
 | `T` / `Shift+T` | Talk timer (elapsed vs. plan, ahead / on time / behind); reset. Click it to pause |
@@ -315,7 +315,7 @@ Run `npm install` once in the repo root (installs `puppeteer-core`; it uses the 
 | `node scripts/new-deck.mjs <slug> <dir> [--lang=vi] [--title=…]` | Start a deck from a template |
 | `node scripts/md-to-deck.mjs talk.md --theme=<slug>` | Markdown → working deck in standard layouts, dressed in the template's fonts and palette (see `examples/md-deck/talk.md`). Use it to get content and timing right fast; move slides into the template's own layouts for the final look |
 | `node scripts/check-deck.mjs <deck.html> [--strict]` | Lint: placeholders, broken images, JS errors (errors); overflow, clipping, missing titles/notes/minutes (warnings) |
-| `node scripts/export.mjs <deck.html> [--pdf] [--png] [--handout]` | `slides.pdf`, `slide-NN.png`, and an A4 `handout.pdf` with notes under each slide |
+| `node scripts/export.mjs <deck.html> [--pdf] [--png] [--handout] [--compact] [--pptx]` | `slides.pdf`, `slide-NN.png`, an A4 `handout.pdf` with notes under each slide; `--compact` = small image-based PDF for e-mail; `--pptx` = PowerPoint with one slide image per slide and the speaker notes in the notes pane (not editable text). Each slide is captured once its entry animations finish |
 | `node scripts/bundle.mjs <deck.html> [--all-subsets]` | One self-contained offline `.html` with fonts embedded |
 | `node scripts/sync-runtime.mjs [--check]` | Copy `runtime/` into every template (edit runtime files only in `runtime/`) |
 | `npm test` | Runtime-copy check + headless test of all templates and the demo (also runs in GitHub Actions) |

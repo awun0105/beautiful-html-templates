@@ -54,9 +54,10 @@ export async function openDeck(browser, file, { width = 1920, height = 1080, has
   return page;
 }
 
-/** Go to slide i and wait for it to land plus a settle delay. */
+/** Go to slide i, wait for it to land, then until its content stops changing
+ *  (entry animations, count-ups), waiting at least `settle` ms. */
 export async function showSlide(page, i, settle = 450) {
   await page.evaluate((i) => DeckKit.goTo(i), i);
   await page.waitForFunction((i) => DeckKit.index === i, { timeout: 5000 }, i).catch(() => {});
-  await sleep(settle);
+  await page.evaluate((i, min) => DeckKit.settle(i, { min }), i, settle);
 }

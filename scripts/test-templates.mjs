@@ -136,6 +136,32 @@ if (!only || only === "demo") {
     await page.evaluate(() => DeckKit.goTo(3));
     await sleep(800);
     ok('audience navigation updates presenter', /Quick check|4\./.test(await pv.evaluate(() => document.querySelector('#deck-kit').shadowRoot.querySelector('.dk-title').textContent)));
+
+    // Controls stay in sync both ways between the audience screen and the current preview.
+    const preview = async (i) => {
+      for (const f of pv.frames()) {
+        if (!f.url().includes('dk=mirror')) continue;
+        try { if ((await f.evaluate(() => window.DeckKit && DeckKit.index)) === i) return f; } catch {}
+      }
+      return null;
+    };
+    await page.evaluate(() => DeckKit.goTo(1));
+    await sleep(1200);
+    const setRange = (n, v) => { const el = DeckKit.slides[1].querySelectorAll('input')[n]; el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); };
+    await page.evaluate(setRange, 0, '2.5');
+    await sleep(600);
+    let f = await preview(1);
+    ok('slider on the audience screen moves the preview', f && (await f.evaluate(() => DeckKit.slides[1].querySelectorAll('input')[0].value)) === '2.5');
+    if (f) await f.evaluate(setRange, 1, '0.4');
+    await sleep(600);
+    ok('slider in the preview moves the audience screen', (await page.evaluate(() => DeckKit.slides[1].querySelectorAll('input')[1].value)) === '0.4');
+    const qi = await page.evaluate(() => DeckKit.slides.findIndex((s) => s.querySelector('[data-reveal]')));
+    await page.evaluate((i) => DeckKit.goTo(i), qi);
+    await sleep(1200);
+    f = await preview(qi);
+    if (f) await f.evaluate(() => document.querySelector('[data-reveal]').click());
+    await sleep(600);
+    ok('answer revealed in the preview shows on the audience screen', await page.evaluate(() => !document.getElementById(document.querySelector('[data-reveal]').getAttribute('data-reveal')).hidden));
     await pv.close();
   }
 
