@@ -1,100 +1,139 @@
-# deck-kit
+<p align="center"><img src="./assets/banner.png" alt="deck kit — beautiful HTML slide templates" /></p>
 
-**Tiếng Việt** · [English](./README.en.md)
+<p align="center"><b>Tiếng Việt</b> · <a href="./README.en.md">English</a></p>
 
-Bộ công cụ làm slide bằng HTML cho người dùng coding agent (Claude Code, Codex, Gemini CLI…): **34 mẫu thiết kế đẹp sẵn**, kèm **bộ điều khiển trình chiếu** chạy ngay trong file HTML, và **các lệnh** để xuất PDF/PowerPoint, nhập PowerPoint có sẵn, đưa deck lên mạng.
+**deck-kit** giúp bạn làm bài thuyết trình đẹp bằng HTML, nhờ coding agent (Claude Code, Codex, Gemini CLI…) làm hộ phần lớn công việc. Repository này có **34 mẫu slide** thiết kế sẵn, một **bộ điều khiển trình chiếu** gắn vào mọi mẫu, và **các lệnh** để xuất PDF / PowerPoint, nhập PowerPoint có sẵn, hay đưa deck lên mạng.
 
-Bạn chỉ cần nói với agent muốn làm bài thuyết trình gì. Agent chọn mẫu, đổ nội dung vào, bạn mở file ra là trình chiếu được — không cần cài PowerPoint, không cần mạng.
+Bạn nói với agent muốn trình bày gì; agent chọn mẫu, viết nội dung, bạn mở file bằng trình duyệt là trình chiếu được — không cần PowerPoint, không cần mạng.
 
-## Có gì trong này
+**Mục lục:** [Repository này chứa gì](#repository-này-chứa-gì) · [Cài đặt](#cài-đặt) · [Làm bộ slide đầu tiên](#làm-bộ-slide-đầu-tiên) · [Trình chiếu](#trình-chiếu) · [Làm slide sinh động](#làm-slide-sinh-động) · [Sửa slide](#sửa-slide) · [Xuất file và chia sẻ](#xuất-file-và-chia-sẻ) · [Danh sách lệnh](#danh-sách-lệnh) · [Thư viện mẫu](#thư-viện-mẫu)
 
-- **34 mẫu slide** với phong cách rất khác nhau: tạp chí, tối giản, cổ động, retro, pastel, pixel game… (xem [thư viện mẫu](#thư-viện-mẫu) ở cuối).
-- **deck-kit.js** — "bảng điều khiển" gắn sẵn vào mọi mẫu: màn hình người trình bày, ghi chú, đồng hồ, con trỏ laser, vẽ lên slide, chỉnh sửa trực tiếp, in PDF…
-- **Các lệnh trong `scripts/`** — tạo deck mới, viết bằng Markdown, nhập PowerPoint, kiểm tra lỗi, xuất file, deploy.
+## Repository này chứa gì
 
-## Bắt đầu nhanh
+| Thư mục / file | Là gì |
+|---|---|
+| [`templates/`](./templates/) | 34 mẫu slide, mỗi mẫu một thư mục chạy độc lập (`template.html`). Xem ảnh ở [Thư viện mẫu](#thư-viện-mẫu) |
+| [`runtime/deck-kit.js`](./runtime/deck-kit.js) | "Bảng điều khiển" trình chiếu gắn sẵn vào mọi mẫu: màn hình người trình bày, ghi chú, đồng hồ, laser, vẽ, chỉnh sửa trực tiếp, in PDF, và các tính năng tương tác (hiện từng bước, công thức, trắc nghiệm, biểu đồ…) |
+| [`scripts/`](./scripts/) | Các lệnh: tạo deck, chuyển Markdown / PowerPoint thành deck, kiểm tra lỗi, xuất file, gói offline, deploy |
+| [`examples/deck-kit-demo/`](./examples/deck-kit-demo/index.html) | Một deck mẫu có đủ mọi tính năng — mở ra là thấy deck-kit làm được gì |
+| [`AGENTS.md`](./AGENTS.md) / [`SKILL.md`](./SKILL.md) | Hướng dẫn cho agent: hỏi gì, chọn mẫu ra sao, giữ thiết kế thế nào (SKILL.md là cùng nội dung, dạng skill) |
+| [`widgets-reference.md`](./widgets-reference.md) | Danh sách đầy đủ mọi thuộc tính và tính năng tương tác, kèm ví dụ |
+| [`animation-patterns.md`](./animation-patterns.md) | Hướng dẫn thêm hiệu ứng chuyển động khi bạn yêu cầu |
+| [`index.json`](./index.json) | Mô tả từng mẫu (phong cách, màu, font, hợp dịp nào) để agent chọn mẫu |
 
-**Cách 1 — nhờ agent (khuyên dùng).** Nói với agent:
+## Cài đặt
 
-> Dùng deck-kit làm cho tôi bộ slide về [chủ đề], [số phút] phút, để tôi trình bày trên lớp.
+**Cần có:** [Node.js](https://nodejs.org) 18 trở lên và Google Chrome (hoặc Chromium). Chrome dùng để kiểm tra deck và xuất PDF / ảnh / PowerPoint; chỉ trình chiếu thì trình duyệt nào cũng được.
 
-Agent sẽ hỏi bạn vài câu (dịp gì, muốn cảm giác ra sao, deck để đọc hay để nói), cho bạn xem trước 3 mẫu, rồi làm bộ slide hoàn chỉnh kèm ghi chú người nói. Cách làm việc chi tiết của agent nằm trong [`AGENTS.md`](./AGENTS.md).
+### Cách 1 — Claude Code (plugin)
 
-**Cách 2 — tự làm:**
+Gõ trong Claude Code:
+
+```
+/plugin marketplace add awun0105/deck-kit
+/plugin install deck-kit@deck-kit
+```
+
+Xong. Từ giờ cứ nhờ Claude làm slide là nó dùng deck-kit. Lần đầu cần xuất file, Claude sẽ tự chạy `npm install` trong thư mục của plugin.
+
+### Cách 2 — Agent khác (Codex, Gemini CLI, Cursor…) hoặc tự cài
 
 ```bash
 git clone https://github.com/awun0105/deck-kit.git
-cd deck-kit && npm install            # một lần; dùng Chrome có sẵn trên máy
+cd deck-kit
+npm install          # một lần; tải công cụ xuất file, dùng Chrome có sẵn trên máy
+```
 
+Để agent dùng được:
+- Agent có hỗ trợ skill: clone (hoặc tạo symlink) vào thư mục skill của agent, ví dụ `~/.claude/skills/deck-kit` hay `~/.codex/skills/deck-kit`.
+- Agent khác: mở agent ngay trong thư mục `deck-kit` (nó tự đọc `AGENTS.md`), hoặc nhắc: *"Đọc ~/deck-kit/AGENTS.md rồi làm cho tôi bộ slide về…"*.
+
+Nếu Chrome nằm ở chỗ lạ, đặt biến môi trường `CHROME_PATH=/đường/dẫn/tới/chrome`.
+
+### Kiểm tra cài đặt
+
+Mở file `examples/deck-kit-demo/index.html` bằng trình duyệt, bấm `→` để xem qua, bấm `?` để xem phím tắt. Muốn chắc các lệnh chạy được:
+
+```bash
+node scripts/check-deck.mjs examples/deck-kit-demo/index.html
+```
+
+## Làm bộ slide đầu tiên
+
+**Nhờ agent (khuyên dùng).** Nói với agent, ví dụ:
+
+> Dùng deck-kit làm cho tôi bộ slide về [chủ đề], [số phút] phút, để tôi trình bày trên lớp.
+
+Agent sẽ hỏi vài câu (dịp gì, muốn cảm giác ra sao, deck để đọc hay để nói), cho bạn xem trước 3 mẫu, rồi làm bộ slide hoàn chỉnh kèm ghi chú người nói.
+
+**Tự làm từ một mẫu:**
+
+```bash
 node scripts/new-deck.mjs vellum ~/slides/kalman --lang=vi --title="Bộ lọc Kalman"
-# mở ~/slides/kalman/index.html, sửa nội dung, rồi:
+# mở ~/slides/kalman/index.html, sửa nội dung, rồi kiểm tra:
 node scripts/check-deck.mjs ~/slides/kalman/index.html
 ```
 
-Bạn đã có slide PowerPoint hoặc thích viết bằng Markdown?
+**Từ dàn ý Markdown hoặc PowerPoint có sẵn:**
 
 ```bash
-node scripts/pptx-to-deck.mjs bai-cu.pptx --theme=vellum      # nhập từ PowerPoint
 node scripts/md-to-deck.mjs dan-y.md --theme=vellum           # viết bằng Markdown (xem examples/md-deck/talk.md)
+node scripts/pptx-to-deck.mjs bai-cu.pptx --theme=vellum      # nhập từ PowerPoint
 ```
 
-> Cần **Node.js** và **Google Chrome**. Nếu dùng hệ thống skills-hub, repo nằm ở `~/.agents/skills/deck-kit`.
+Tên mẫu (`vellum`, `coral`, `grove`…) là tên thư mục trong `templates/`.
 
-## Khi trình chiếu
+## Trình chiếu
 
-Mở file `index.html` bằng trình duyệt là trình chiếu được. Bấm `?` để xem toàn bộ phím tắt.
+Mở `index.html` của deck bằng trình duyệt. Bấm `?` bất cứ lúc nào để xem phím tắt.
 
 | Phím | Làm gì |
 |---|---|
 | `←` `→` `Space` `1`–`9` | Chuyển slide (`→` cũng hiện từng phần của slide nếu có) |
-| `P` | **Màn hình người trình bày** — mở cửa sổ thứ hai có slide hiện tại, slide kế tiếp, ghi chú và đồng hồ. Để cửa sổ này trên laptop, cửa sổ gốc kéo sang máy chiếu (màn hình để chế độ *mở rộng*). Kéo thanh trượt ở cửa sổ nào thì cửa sổ kia đổi theo |
+| `P` | **Màn hình người trình bày** — cửa sổ thứ hai có slide hiện tại, slide kế tiếp, ghi chú và đồng hồ. Để cửa sổ này trên laptop, kéo cửa sổ gốc sang máy chiếu (màn hình để chế độ *mở rộng*) |
 | `N` | Ghi chú người nói (hiện ngay trên màn hình) |
 | `M` | Menu các slide, có phút dự kiến |
 | `T` | Đồng hồ: đã nói bao lâu, đang nhanh hay chậm so với kế hoạch |
 | `B` / `W` | Tắt màn hình đen / trắng |
 | `L` | Con trỏ laser |
 | `D` | Vẽ lên slide (`C` xoá, `Backspace` hoàn tác) |
-| `E` | **Chỉnh sửa** — xem bên dưới |
-| `K` | Chép vị trí một phần tử để gửi cho agent |
-| `X` | Xuất file & chia sẻ |
 | `Z` | Phóng to: kéo khung (hoặc click) vào chỗ muốn phóng; `Z` / `Esc` để thu lại. Ở màn hình người trình bày thì kéo khung trên ô slide hiện tại, máy chiếu phóng theo |
+| `E` | Chỉnh sửa trực tiếp (xem [Sửa slide](#sửa-slide)) |
+| `K` | Chép vị trí một phần tử để gửi cho agent |
+| `X` | Xuất file và chia sẻ |
 | `F` | Toàn màn hình |
-| `Ctrl+P` | In ra PDF, mỗi slide một trang (biểu đồ hiện đủ) |
+| `Ctrl+P` | In ra PDF, mỗi slide một trang |
 
 Giao diện các bảng là tiếng Việt khi deck viết bằng tiếng Việt hoặc trình duyệt của bạn đặt tiếng Việt.
 
-## Slide tương tác
+## Làm slide sinh động
 
-Mẫu nào cũng chạy được biểu đồ động, thanh trượt, nút "xem đáp án", đồng hồ đếm ngược — hợp cho bài giảng. Ngoài ra, mỗi thứ dưới đây chỉ cần một thuộc tính HTML (màu và font tự theo mẫu):
+Mẫu nào cũng chạy được biểu đồ động, thanh trượt, nút "xem đáp án", đồng hồ đếm ngược — hợp cho bài giảng. Mỗi thứ dưới đây chỉ cần một thuộc tính HTML, màu và font tự theo mẫu:
 
-- **Hiện từng phần** — bấm `→` hiện ý tiếp theo, `←` ẩn lại (`data-step`); click chuột, cuộn chuột, vuốt hay nút ‹ › của mẫu cũng đi qua từng bước.
-- **Công thức toán** — gõ `$x^2$` hay `$$…$$` là ra công thức đẹp (KaTeX).
+- **Hiện từng phần** — bấm `→` hiện ý tiếp theo, `←` ẩn lại; click chuột, cuộn chuột, vuốt hay nút ‹ › của mẫu cũng đi qua từng bước.
+- **Công thức toán** — gõ `$x^2$` hay `$$…$$` là ra công thức đẹp.
 - **Code** — tô màu cú pháp, bấm `→` để làm nổi từng dòng, có nút chép code.
 - **Câu hỏi trắc nghiệm** — bấm vào đáp án là biết đúng sai, kèm giải thích.
 - **Biểu đồ cột, đường, tròn** — từ một bảng số liệu hoặc vài con số.
-- **Mô phỏng có nút phát / dừng / từng bước**.
+- **Mô phỏng** có nút phát / dừng / từng bước.
 - **Thanh kéo so sánh trước / sau** cho hai tấm ảnh.
 - **Chấm chú thích trên ảnh** — bấm vào số để hiện giải thích.
 - **Mã QR** dẫn tới link bất kỳ.
-- **Phóng to** một vùng khi đang trình chiếu (phím `Z`).
+- **Video, âm thanh, YouTube** — không tự phát, có nút tắt tiếng, chuyển slide là tự dừng.
+- **Hiệu ứng chuyển động** — các mẫu giữ nguyên như thiết kế gốc; khi bạn muốn "sống động hơn", agent thêm theo [`animation-patterns.md`](./animation-patterns.md).
 
-Bạn chỉ cần nói với agent điều mình muốn ("cho câu hỏi trắc nghiệm vào cuối phần 2", "vẽ biểu đồ doanh thu từ bảng này"); agent tra danh sách đầy đủ trong [`widgets-reference.md`](./widgets-reference.md). Bản in và file xuất luôn hiện đủ mọi bước. Xem thử tất cả trong một deck: [`examples/deck-kit-demo/index.html`](./examples/deck-kit-demo/index.html).
-
-## Video, âm thanh và chuyển động
-
-- **Video, âm thanh, YouTube**: chèn `<video src="clip.mp4">`, `<audio src="nhac.mp3">` hoặc khung YouTube vào slide (trong Markdown: `![](clip.mp4)`, `![](nhac.mp3)`, hoặc dán link YouTube trên một dòng riêng). Không có gì tự phát — bấm để phát, có sẵn nút tắt tiếng; chuyển sang slide khác là tự dừng và quay về đầu.
-- **Chuyển động**: các mẫu giữ nguyên như thiết kế gốc. Khi bạn muốn slide "sống động" hơn, cứ nhờ agent — agent làm theo hướng dẫn trong [`animation-patterns.md`](./animation-patterns.md) (chọn hiệu ứng theo cảm giác, chữ hiện dần, xuất hiện lần lượt, số đếm lên…); bản in PDF vẫn hiện đầy đủ.
+Bạn chỉ cần nói với agent điều mình muốn ("cho câu hỏi trắc nghiệm vào cuối phần 2", "vẽ biểu đồ doanh thu từ bảng này"); agent tra cách làm trong [`widgets-reference.md`](./widgets-reference.md). Bản in và file xuất luôn hiện đủ mọi bước. Xem thử tất cả trong [`examples/deck-kit-demo/index.html`](./examples/deck-kit-demo/index.html).
 
 ## Sửa slide
 
-- **Sửa nhanh bằng tay (`E`)** — bấm `E`, click vào chữ hay hình trên slide: kéo để di chuyển, kéo núm để đổi cỡ, double-click để gõ lại chữ, `Del` để ẩn, `Ctrl+Z` để hoàn tác. Bấm `E` lần nữa là **lưu thẳng vào file HTML** (Chrome/Edge; chọn file deck một lần). Chỉ đúng chỗ bạn sửa bị thay đổi.
+- **Sửa bằng tay (`E`)** — bấm `E`, click vào chữ hay hình: kéo để di chuyển, kéo núm để đổi cỡ, double-click để gõ lại chữ, `Del` để ẩn, `Ctrl+Z` để hoàn tác. Bấm `E` lần nữa là **lưu thẳng vào file HTML** (Chrome/Edge; chọn file deck một lần). Chỉ đúng chỗ bạn sửa bị thay đổi.
 - **Nhờ agent sửa (`K`)** — bấm `K` rồi click vào chỗ cần sửa; vị trí chính xác (file, slide, phần tử) được chép vào clipboard. Dán vào chat kèm yêu cầu: *"[vị trí] — viết lại câu này ngắn hơn"*.
 - **Ghi chú người nói** — sửa ngay trong màn hình người trình bày (`P` → ✎ Sửa → 💾 Lưu vào file).
-- **`CLAUDE.md` của từng deck** — "trí nhớ" của deck cho agent: mục đích, khán giả, giọng văn, quy tắc, các góp ý của bạn. Lần sau mở phiên chat mới, agent đọc lại là làm đúng ý bạn mà không phải dặn lại.
+- **`CLAUDE.md` của từng deck** — "trí nhớ" của deck cho agent: mục đích, khán giả, giọng văn, góp ý của bạn. Lần sau mở phiên chat mới, agent đọc lại là làm đúng ý mà không phải dặn lại.
 
-## Xuất file & chia sẻ
+## Xuất file và chia sẻ
 
-Bấm `X` trong deck: in PDF ngay, hoặc tick định dạng / nơi deploy rồi bấm **Chép lệnh** — dán vào terminal hay gửi cho agent chạy.
+Bấm `X` trong deck: in PDF ngay, hoặc tick định dạng / nơi deploy rồi bấm **Chép lệnh** — dán vào terminal hay gửi cho agent chạy. Hoặc gõ thẳng:
 
 ```bash
 node scripts/export.mjs ~/slides/kalman/index.html                      # PDF + ảnh PNG + bản phát tay có ghi chú
@@ -110,7 +149,7 @@ Về deploy:
 - `--preview` tạo link xem thử, không đụng link chính. `--dry-run` chỉ xem trước, không đăng gì.
 - Vercel / Cloudflare cần đăng nhập một lần (`npx vercel login`, `npx wrangler login`); GitHub Pages dùng `gh` có sẵn.
 
-## Các lệnh
+## Danh sách lệnh
 
 | Lệnh | Để làm gì |
 |---|---|
@@ -124,7 +163,7 @@ Về deploy:
 | `scripts/apply-changes.mjs <deck.html> <file.json>` | Ghép ghi chú / chỉnh sửa đã lưu từ Firefox, Safari |
 | `npm test` | Chạy bộ kiểm tra tự động cho cả 34 mẫu |
 
-Hướng dẫn đầy đủ (cho agent và cho người muốn đi sâu): [`AGENTS.md`](./AGENTS.md) — mục 8 (trình chiếu), 9 (công cụ), 10 (làm việc lâu dài với một deck).
+Muốn đi sâu hơn: [`AGENTS.md`](./AGENTS.md) — mục 8 (trình chiếu), 9 (công cụ), 10 (làm việc lâu dài với một deck).
 
 ## Thư viện mẫu
 

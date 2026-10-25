@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<!-- Source of assets/banner.png (README header). Render: node scripts/render-banner.mjs -->
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Work+Sans:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin: 0; }
+  body { width: 1600px; height: 500px; overflow: hidden; position: relative;
+    background: radial-gradient(ellipse at 78% 40%, #3a2f22 0%, #1b1712 55%, #12100d 100%); color: #F2EEDF;
+    font-family: "Work Sans", sans-serif; }
+  .grain { position: absolute; inset: 0; opacity: .08; background-image: radial-gradient(#fff 0.6px, transparent 0.6px); background-size: 4px 4px; }
+  .text { position: absolute; left: 110px; top: 50%; transform: translateY(-52%); }
+  h1 { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 500; font-size: 176px; line-height: .9; margin: 0; letter-spacing: -.02em; }
+  h1 em { font-style: italic; color: #E1A4C2; }
+  .rule { width: 120px; height: 6px; border-radius: 3px; background: #D6DD63; margin: 34px 0 22px; }
+  p { margin: 0; font-size: 25px; font-weight: 600; letter-spacing: .32em; text-transform: uppercase; color: #CFC6B1; }
+  .stack { position: absolute; right: 70px; top: 0; width: 760px; height: 500px; }
+  .stack img { position: absolute; width: 430px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 14px;
+    box-shadow: 0 24px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.08); }
+</style>
+</head>
+<body>
+  <div class="grain"></div>
+  <div class="text">
+    <h1>deck <em>kit</em></h1>
+    <div class="rule"></div>
+    <p>beautiful HTML slide templates</p>
+  </div>
+  <div class="stack">
+    <img src="../screenshots/vellum-1.png" style="left:20px; top:62px; transform: rotate(-7deg)">
+    <img src="../screenshots/creative-mode-1.png" style="left:290px; top:46px; transform: rotate(5deg)">
+    <img src="../screenshots/soft-editorial-4.png" style="left:70px; top:212px; transform: rotate(3deg)">
+    <img src="../screenshots/8-bit-orbit-1.png" style="left:320px; top:222px; transform: rotate(-4deg)">
+  </div>
+</body>
+</html>
