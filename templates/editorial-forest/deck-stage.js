@@ -135,9 +135,11 @@
       z-index: 2147482000;
       pointer-events: none;
     }
+    /* The zones only mark the thirds; taps are read by _onStageTap so that
+       buttons, sliders and canvases on the slide still receive them. */
     .tapzone {
       flex: 1;
-      pointer-events: auto;
+      pointer-events: none;
       -webkit-tap-highlight-color: transparent;
     }
     /* Only activate tap zones on coarse pointers (touch devices). */
@@ -549,6 +551,7 @@
       this._onMouseMove = this._onMouseMove.bind(this);
       this._onTapBack = this._onTapBack.bind(this);
       this._onTapForward = this._onTapForward.bind(this);
+      this._onStageTap = this._onStageTap.bind(this);
       this._onMessage = this._onMessage.bind(this);
       // Capture-phase close so a click anywhere dismisses the menu, but
       // ignore clicks that land inside the menu itself — otherwise the
@@ -576,6 +579,7 @@
       this._loadNotes();
       this._syncPrintPageRule();
       window.addEventListener('keydown', this._onKey);
+      this.addEventListener('click', this._onStageTap);
       window.addEventListener('resize', this._onResize);
       window.addEventListener('mousemove', this._onMouseMove, { passive: true });
       window.addEventListener('message', this._onMessage);
@@ -763,6 +767,7 @@
 
     disconnectedCallback() {
       window.removeEventListener('keydown', this._onKey);
+      this.removeEventListener('click', this._onStageTap);
       window.removeEventListener('resize', this._onResize);
       window.removeEventListener('mousemove', this._onMouseMove);
       window.removeEventListener('message', this._onMessage);
@@ -1236,6 +1241,24 @@
       // translateX hide leaves thumbs (tabIndex=0) in the tab order —
       // inert keeps them unfocusable while the rail is off-screen.
       this._rail.inert = hard || !this._railVisible;
+    }
+
+    /** Touch navigation: a tap on the slide's left third goes back, right
+     *  third forward — unless it landed on something interactive. The tap
+     *  zones are display:none on fine pointers, so their width doubles as the
+     *  "is this a touch device" check. */
+    _onStageTap(e) {
+      if (e.defaultPrevented || !this._tapzones) return;
+      const r = this._tapzones.getBoundingClientRect();
+      if (!r.width) return;
+      const path = e.composedPath();
+      if (!path.includes(this._canvas)) return; // overlay, rail, menus
+      const interactive = 'a[href], button, input, select, textarea, label, summary, canvas, video, audio, iframe, ' +
+        '[contenteditable], [role="button"], [role="slider"], [data-noswipe], [data-countdown], [data-reveal]';
+      if (path.some((n) => n.nodeType === 1 && n.matches && n.matches(interactive))) return;
+      const x = (e.clientX - r.left) / r.width;
+      if (x < 1 / 3) this._onTapBack(e);
+      else if (x > 2 / 3) this._onTapForward(e);
     }
 
     _onTapBack(e) {

@@ -12,6 +12,20 @@ Copy this to your coding agent:
 Clone https://github.com/zarazhangrui/beautiful-html-templates and follow the instructions in AGENTS.md to build me a beautiful HTML slide deck.
 ```
 
+## Presenter features
+
+Every template ships with [`deck-kit.js`](./runtime/deck-kit.js), a presenter layer that sits on top of the template's design:
+
+- **Speaker notes** (`N`): write `<aside class="notes">` inside a slide; the panel shows the notes, planned time and the next slide.
+- **Slide menu** (`M`): slides grouped by `data-sec`, with the planned start minute from `data-min`.
+- **Talk timer** (`T`): elapsed time against the plan, colored ahead / on time / behind.
+- **Fullscreen** (`F`), **`#N` deep links**, **swipe** on touch screens.
+- **Interactive slides**: `DeckKit.widget()` for live canvases and sliders (only the visible slide animates), `data-reveal` answer buttons, `data-countdown` timers.
+- **Print → Save as PDF**: one slide per page in every template, canvases included.
+- **Offline single file**: `node scripts/bundle.mjs deck.html` inlines scripts, images and Google Fonts.
+
+See [`examples/deck-kit-demo`](./examples/deck-kit-demo/index.html) and [`AGENTS.md` § 8](./AGENTS.md#8-presenter-features-deck-kitjs).
+
 ## Gallery
 
 All 34 templates. Three slides per template (cover · mid-deck · later) to give a sense of how each visual system handles different layouts. Click any template name to open its folder on GitHub — the HTML, metadata, and any sibling assets are all there.

@@ -454,6 +454,8 @@ const container=document.getElementById('slideContainer');
 const dots=document.querySelectorAll('.nav-dot');
 const counter=document.getElementById('slideCounter');
 const slides=document.querySelectorAll('.slide');
+// deck-kit.js reads this to drive notes, menu, deep links and print.
+window.deckAdapter = { go: (i) => goToSlide(i + 1), index: () => Math.max(0, Array.from(dots).findIndex((d) => d.classList.contains('active'))) };
 function goToSlide(n){const slide=document.getElementById('slide-'+n);if(slide)slide.scrollIntoView({behavior:'smooth'});}
 dots.forEach(dot=>{dot.addEventListener('click',()=>{goToSlide(dot.dataset.slide);});});
 document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;let current=1;dots.forEach((d,i)=>{if(d.classList.contains('active'))current=i+1;});
@@ -465,5 +467,6 @@ const observer=new IntersectionObserver(entries=>{entries.forEach(entry=>{if(ent
 slides.forEach(s=>observer.observe(s));
 </script>
 
+  <script src="deck-kit.js"></script>
 </body>
 </html>

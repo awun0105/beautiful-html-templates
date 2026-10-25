@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>deck-kit demo — interactive lecture</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<script src="../../runtime/deck-stage.js"></script>
+<style>
+  /* Palette and type borrowed from templates/soft-editorial. */
+  :root { --paper:#F2EEDF; --ink:#2A241B; --ink-soft:#5C5345; --pink:#E1A4C2; --lemon:#D6DD63; --sage:#B7C7A8; --blush:#E8C9B6; }
+  html, body { margin:0; background:#1a1a1a; }
+  body { font-family:"Work Sans", "Helvetica Neue", Arial, sans-serif; color:var(--ink); }
+  section.slide { background:var(--paper); color:var(--ink); padding:110px 140px; display:flex; flex-direction:column; gap:36px; }
+  h1, h2 { font-family:"Cormorant Garamond", Garamond, serif; font-weight:500; margin:0; letter-spacing:-.01em; }
+  h1 { font-size:150px; line-height:.95; }
+  h2 { font-size:92px; line-height:1; }
+  p, li { font-size:36px; line-height:1.4; margin:0; }
+  .eyebrow { font-size:28px; color:var(--ink-soft); }
+  .row { display:flex; gap:60px; flex:1; min-height:0; align-items:stretch; }
+  .card { background:#fff; border-radius:24px; padding:28px 34px; box-shadow:0 1px 0 rgba(0,0,0,.06); }
+  canvas { width:100%; height:100%; display:block; }
+  .controls { width:520px; display:flex; flex-direction:column; gap:26px; font-size:30px; }
+  .controls label { display:flex; flex-direction:column; gap:8px; }
+  input[type=range] { width:100%; accent-color:var(--ink); }
+  button { font:600 30px "Work Sans", sans-serif; padding:14px 30px; border-radius:999px; border:2px solid var(--ink);
+    background:var(--ink); color:var(--paper); cursor:pointer; align-self:flex-start; }
+  .answer { background:var(--lemon); border-radius:20px; padding:24px 32px; font-size:36px; }
+  .big { font-family:"Cormorant Garamond", serif; font-size:260px; line-height:1; }
+  kbd { font:600 28px ui-monospace, Menlo, monospace; background:#fff; border-radius:8px; padding:2px 12px; }
+</style>
+</head>
+<body>
+<deck-stage width="1920" height="1080">
+
+  <section class="slide" data-title="Welcome" data-sec="Intro" data-min="1">
+    <div class="eyebrow">deck-kit · interactive lecture demo</div>
+    <h1>Every template,<br><em>now a lecture.</em></h1>
+    <p>Press <kbd>N</kbd> for notes, <kbd>M</kbd> for the menu, <kbd>T</kbd> for the talk timer, <kbd>?</kbd> for all shortcuts.</p>
+    <aside class="notes">Welcome everyone. These notes live in an &lt;aside class="notes"&gt; inside the slide and never show on screen. The menu (M) lists every slide with its planned start minute, taken from data-min.</aside>
+  </section>
+
+  <section class="slide" id="bell" data-title="A belief is a bell curve" data-sec="Live widgets" data-min="3">
+    <h2>A belief is a bell curve</h2>
+    <div class="row">
+      <div class="card" style="flex:1"><canvas id="bellCv"></canvas></div>
+      <div class="controls">
+        <label>Mean μ <input id="mu" type="range" min="-3" max="3" step="0.1" value="0" /></label>
+        <label>Spread σ <input id="sigma" type="range" min="0.3" max="2.5" step="0.05" value="1" /></label>
+        <p style="font-size:26px;color:var(--ink-soft)">Arrow keys on a slider move the slider, not the slide.</p>
+      </div>
+    </div>
+    <aside class="notes">Drag σ: narrow means confident, wide means unsure. The orbiting dot only animates while this slide is visible — widgets on other slides don't tick.</aside>
+  </section>
+
+  <section class="slide" data-title="Signals in motion" data-sec="Live widgets" data-min="2">
+    <h2>Signals in motion</h2>
+    <div class="card" style="flex:1"><canvas id="waveCv"></canvas></div>
+    <aside class="notes">This canvas is redrawn every frame. When you print, deck-kit draws it once more and freezes it into an image, even if nobody opened this slide.</aside>
+  </section>
+
+  <section class="slide" data-title="Quick check" data-sec="Practice" data-min="2">
+    <h2>Quick check</h2>
+    <p>Two sensors disagree. One has σ = 1, the other σ = 2. Which one should the fused estimate sit closer to?</p>
+    <button type="button" data-reveal="ans1">Show answer</button>
+    <div class="answer" id="ans1" hidden>The σ = 1 sensor — weights are 1/σ², so it counts four times as much.</div>
+    <aside class="notes">Let the room guess before revealing.</aside>
+  </section>
+
+  <section class="slide" data-title="Break" data-sec="Break" data-min="5" style="align-items:center;justify-content:center;text-align:center">
+    <h2>Five-minute break</h2>
+    <div class="big" data-countdown="5:00" data-autostart></div>
+    <p style="color:var(--ink-soft)">Starts on its own when this slide opens · click to pause · double-click to reset</p>
+  </section>
+
+  <section class="slide" data-title="Thanks" data-sec="Wrap-up" data-min="1">
+    <h1>Thank you.</h1>
+    <p>Print → Save as PDF gives one slide per page, canvases included.</p>
+  </section>
+
+</deck-stage>
+<script src="../../runtime/deck-kit.js"></script>
+<script>
+  // Bell-curve widget: redraws on input, animates a dot while visible.
+  (function () {
+    const cv = document.getElementById('bellCv');
+    const mu = document.getElementById('mu'), sg = document.getElementById('sigma');
+    let phase = 0;
+    function draw() {
+      const { ctx, w, h } = DeckKit.canvas(cv);
+      if (!w) return;
+      ctx.clearRect(0, 0, w, h);
+      const m = +mu.value, s = +sg.value;
+      const X = (x) => (x + 5) / 10 * w, Y = (y) => h - 30 - y * (h - 60) / 1.4;
+      ctx.strokeStyle = '#d8d1bd'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, Y(0)); ctx.lineTo(w, Y(0)); ctx.stroke();
+      ctx.beginPath();
+      for (let px = 0; px <= w; px += 2) {
+        const x = px / w * 10 - 5, y = Math.exp(-0.5 * ((x - m) / s) ** 2) / (s * Math.sqrt(2 * Math.PI));
+        px ? ctx.lineTo(px, Y(y)) : ctx.moveTo(px, Y(y));
+      }
+      ctx.lineTo(w, Y(0)); ctx.lineTo(0, Y(0)); ctx.closePath();
+      ctx.fillStyle = 'rgba(225,164,194,.45)'; ctx.fill();
+      ctx.strokeStyle = '#2A241B'; ctx.lineWidth = 4; ctx.stroke();
+      const dx = m + s * Math.sin(phase);
+      ctx.fillStyle = '#2A241B'; ctx.beginPath(); ctx.arc(X(dx), Y(0), 12, 0, 7); ctx.fill();
+    }
+    mu.addEventListener('input', draw); sg.addEventListener('input', draw);
+    DeckKit.widget(cv, { draw, tick(dt) { phase += dt * 2; draw(); } });
+  })();
+
+  // Wave widget: pure animation.
+  (function () {
+    const cv = document.getElementById('waveCv');
+    let t = 0;
+    function draw() {
+      const { ctx, w, h } = DeckKit.canvas(cv);
+      if (!w) return;
+      ctx.clearRect(0, 0, w, h);
+      [['#B7C7A8', 1, 0], ['#E1A4C2', 1.7, 1], ['#2A241B', 0.6, 2]].forEach(([c, f, o]) => {
+        ctx.strokeStyle = c; ctx.lineWidth = 6; ctx.beginPath();
+        for (let x = 0; x <= w; x += 4) {
+          const y = h / 2 + Math.sin(x / w * Math.PI * 4 * f + t + o) * h * 0.3;
+          x ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+        }
+        ctx.stroke();
+      });
+    }
+    DeckKit.widget(cv, { draw, tick(dt) { t += dt * 1.5; draw(); } });
+  })();
+</script>
+</body>
+</html>

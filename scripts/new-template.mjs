@@ -6,6 +6,7 @@
  *   - previews/                 (used by the 3-cover-variation step)
  *   - deck-stage.js             (copied from /runtime — keeps the template
  *                                self-contained per TEMPLATE_SPEC § 3)
+ *   - deck-kit.js               (presenter layer: notes, menu, timer, print)
  *
  * Usage:
  *   node scripts/new-template.mjs <slug>
@@ -39,6 +40,8 @@ const templateDir = resolve(repoRoot, "templates", slug);
 const previewsDir = resolve(templateDir, "previews");
 const runtimeSrc = resolve(repoRoot, "runtime", "deck-stage.js");
 const runtimeDst = resolve(templateDir, "deck-stage.js");
+const kitSrc = resolve(repoRoot, "runtime", "deck-kit.js");
+const kitDst = resolve(templateDir, "deck-kit.js");
 
 if (existsSync(templateDir)) {
   console.error(`Template folder already exists: templates/${slug}`);
@@ -55,10 +58,12 @@ if (!existsSync(runtimeSrc)) {
 mkdirSync(templateDir, { recursive: true });
 mkdirSync(previewsDir, { recursive: true });
 copyFileSync(runtimeSrc, runtimeDst);
+copyFileSync(kitSrc, kitDst);
 
 console.log(`Scaffolded templates/${slug}/`);
 console.log(`  · previews/         (for the 3-cover-variation step)`);
 console.log(`  · deck-stage.js     (copied from runtime/)`);
+console.log(`  · deck-kit.js       (copied from runtime/ — load it last, before </body>)`);
 console.log("");
 console.log("Next steps:");
 console.log(`  1. Build 3 cover variations in templates/${slug}/previews/`);

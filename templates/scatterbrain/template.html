@@ -1254,6 +1254,8 @@
         const slides = Array.from(document.querySelectorAll('.slide'));
         const total = slides.length;
         let current = slides.findIndex(s => s.classList.contains('active'));
+        // deck-kit.js reads this to drive notes, menu, deep links and print.
+        window.deckAdapter = { go: (i) => go(i), index: () => current };
         if (current < 0) {
           current = 0;
           slides[0].classList.add('active');
@@ -1316,5 +1318,6 @@
         }, { passive: true });
       })();
     </script>
+  <script src="deck-kit.js"></script>
 </body>
 </html>

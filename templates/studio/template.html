@@ -1451,6 +1451,8 @@
         const counter = document.getElementById("slide-counter");
         const total = slides.length;
         let current = 0;
+        // deck-kit.js reads this to drive notes, menu, deep links and print.
+        window.deckAdapter = { go: (i) => goTo(i), index: () => current };
         let animating = false;
 
         /* ── Bootstrap: set deck width, build nav dots ─────────────────────── */
@@ -1602,5 +1604,6 @@
         init();
       })();
     </script>
-  </body>
+    <script src="deck-kit.js"></script>
+</body>
 </html>

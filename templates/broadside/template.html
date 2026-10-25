@@ -2025,6 +2025,8 @@
         const slides = Array.from(deck.querySelectorAll(".slide"));
         const total = slides.length;
         let current = 0;
+        // deck-kit.js reads this to drive notes, menu, deep links and print.
+        window.deckAdapter = { go: (i) => goTo(i), index: () => current };
         let isAnimating = false;
 
         // Size the deck to fit all slides side by side
@@ -2140,5 +2142,6 @@
         goTo(0);
       })();
     </script>
-  </body>
+    <script src="deck-kit.js"></script>
+</body>
 </html>

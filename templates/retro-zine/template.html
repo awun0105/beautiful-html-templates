@@ -993,6 +993,8 @@
       const slideCounter = document.getElementById('slideCounter');
       const totalSlides = slides.length;
       let current = 0;
+      // deck-kit.js reads this to drive notes, menu, deep links and print.
+      window.deckAdapter = { go: (i) => { current = i; updateSlide(i); }, index: () => current };
 
       function updateSlide(index) {
         slides.forEach((slide, i) => {
@@ -1054,5 +1056,6 @@
       updateSlide(0);
     })();
   </script>
+  <script src="deck-kit.js"></script>
 </body>
 </html>

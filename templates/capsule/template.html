@@ -1352,6 +1352,8 @@
   const dots = document.querySelectorAll('.nav-dot');
   const counterCurrent = document.getElementById('current');
   let currentSlide = 1;
+  // deck-kit.js reads this to drive notes, menu, deep links and print.
+  window.deckAdapter = { go: (i) => goToSlide(i + 1), index: () => currentSlide - 1 };
   const totalSlides = slides.length;
 
   function goToSlide(n) {
@@ -1409,5 +1411,6 @@
   }, { passive: true });
 </script>
 
+  <script src="deck-kit.js"></script>
 </body>
 </html>

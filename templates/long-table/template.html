@@ -1165,6 +1165,8 @@
   // Plain vanilla navigation: arrows, space, home/end, swipe.
   const slides = Array.from(document.querySelectorAll('.slide'));
   let current = 0;
+  // deck-kit.js reads this to drive notes, menu, deep links and print.
+  window.deckAdapter = { go: (i) => show(i), index: () => current };
   function show(i) {
     if (i < 0) i = 0;
     if (i > slides.length - 1) i = slides.length - 1;
@@ -1188,5 +1190,6 @@
   });
 </script>
 
+  <script src="deck-kit.js"></script>
 </body>
 </html>

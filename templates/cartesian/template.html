@@ -949,6 +949,8 @@
         const slides = document.querySelectorAll('.slide');
         const dots = document.querySelectorAll('.nav-dot');
         let currentSlide = 0;
+        // deck-kit.js reads this to drive notes, menu, deep links and print.
+        window.deckAdapter = { go: (i) => showSlide(i), index: () => currentSlide, touch: false };
         const totalSlides = slides.length;
 
         document.getElementById('totalSlides').textContent = String(totalSlides).padStart(2, '0');
@@ -1132,5 +1134,6 @@
             }
         });
     </script>
+  <script src="deck-kit.js"></script>
 </body>
 </html>

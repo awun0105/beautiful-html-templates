@@ -1343,6 +1343,8 @@
         const slides = document.querySelectorAll('.slide');
         const totalSlides = slides.length;
         let currentSlide = 0;
+        // deck-kit.js reads this to drive notes, menu, deep links and print.
+        window.deckAdapter = { go: (i) => goToSlide(i), index: () => currentSlide, touch: false };
 
         const navDotsContainer = document.getElementById('navDots');
         const slideCounter = document.getElementById('slideCounter');
@@ -1483,5 +1485,6 @@
         // Initial nav update
         updateNav();
     </script>
+  <script src="deck-kit.js"></script>
 </body>
 </html>

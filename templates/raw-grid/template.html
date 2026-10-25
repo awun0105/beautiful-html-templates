@@ -1089,6 +1089,8 @@ html, body {
 <script>
 const slides = document.querySelectorAll('.slide');
 let current = 0;
+// deck-kit.js reads this to drive notes, menu, deep links and print.
+window.deckAdapter = { go: (i) => showSlide(i), index: () => current };
 const total = slides.length;
 
 function showSlide(idx) {
@@ -1117,5 +1119,6 @@ document.addEventListener('touchend', e => {
   else if (touchEndY - touchStartY > 50) prevSlide();
 });
 </script>
+  <script src="deck-kit.js"></script>
 </body>
 </html>

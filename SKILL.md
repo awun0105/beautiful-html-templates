@@ -1,6 +1,6 @@
 ---
 name: beautiful-html-templates
-description: Build stunning, professionally-designed HTML slide decks by choosing from 34 curated visual design systems. Use when the user wants to create an HTML presentation, deck, pitch deck, or slideshow using pre-designed templates with distinct aesthetics and zero dependencies.
+description: Build stunning, professionally-designed HTML slide decks by choosing from 34 curated visual design systems. Use when the user wants to create an HTML presentation, deck, pitch deck, or slideshow using pre-designed templates with distinct aesthetics and zero dependencies. Every template includes presenter tools (speaker notes, slide menu, talk timer, interactive canvas widgets, print to PDF, offline single-file bundling) via deck-kit.js.
 ---
 
 # Agent Instructions
@@ -42,7 +42,7 @@ These three preview files should be self-contained — opening any of them shows
 
 ### Step 4 — Open all 3 previews in the browser, send paths to user
 
-Open each of the 3 preview files in the browser using `open <path>` (macOS). Then send the user a message like:
+Open each of the 3 preview files in the browser — `open <path>` on macOS, `xdg-open <path>` on Linux, `start <path>` on Windows. Then send the user a message like:
 
 > "Three options to compare:
 >
@@ -65,10 +65,11 @@ Once the user picks:
 2. Adapt every slide per the rules in §3 (preserve / replace / extend).
 3. If the user's deck needs more slides than the template's demo holds, duplicate existing layouts to fit; if it needs fewer, drop slides from the bottom. Update page-number labels.
 4. **If a slide needs a layout the template doesn't have, design it from scratch using the template's design system** — same fonts, same color palette, same decorative vocabulary, same spacing rhythm, same component grammar. Do not bail back to the user; do not pick a different template; do not import a new visual language. The new slide should look like a natural extension of the template, not a graft. (See §5 — designing missing layouts.)
+5. **Fill in the presenter layer** (§8): a `data-title` on every slide, and — when the user gave talking points or a time budget — `<aside class="notes">` speaker notes, `data-sec` section names and `data-min` planned minutes. For teaching decks, interactive demos go in as `DeckKit.widget(...)`.
 
 ### Step 6 — Open the final deck in the browser, send the file path
 
-Open the finished deck with `open <path>`. Send the user a message like:
+Open the finished deck (`open` / `xdg-open` / `start`). Send the user a message like:
 
 > "Done. Your deck is at `/path/to/deck/template.html` — opened it in your browser.
 >
@@ -134,6 +135,7 @@ Once you've cloned the template's folder into the user's workspace, follow these
 - **Slide-level CSS classes** (e.g. `.s-toc`, `.slide--quote`, `.layout-cover`). These carry the visual identity.
 - **Decorative elements** — corner brackets, paper grain, geometric shapes, illustrated SVGs, hand-drawn doodles. They are part of the system, not optional ornament.
 - **The navigation runtime** — whether it's `deck-stage.js`, an inline keyboard handler, scroll-snap, or nothing. Whatever the template uses, keep using.
+- **`deck-kit.js` and its wiring** — the `<script src="deck-kit.js">` tag right before `</body>`, and in templates with inline navigation the one-line `window.deckAdapter = …` next to the slide-index variable. Copy `deck-kit.js` along with the folder.
 
 ### Always replace (this is the user's content)
 
@@ -197,7 +199,9 @@ A good test: open your new slide between two existing slides in the deck. If it 
 - **Don't combine layouts from different templates.** Each template is a closed visual system. Mixing slide A from raw-grid with slide B from neo-grid-bold will look amateur. (This is *different* from §5: extending one template is fine; mashing two templates is not.)
 - **Don't strip "extra" decoration thinking it's noise.** Corner brackets, paper grain, SVG ornaments — they are part of the identity.
 - **Don't try to "modernize" old templates** — they're working as designed. If a template feels dated, pick a different template, don't edit the existing one.
-- **Don't forget to open the file in the browser.** Every preview, every iteration, every final deck. Use `open <path>`.
+- **Don't forget to open the file in the browser.** Every preview, every iteration, every final deck. Use `open <path>` (`xdg-open` on Linux).
+- **Don't write your own notes panel, timer, menu or print CSS.** `deck-kit.js` already does it for every template; add data to the slides instead (§8).
+- **Don't put canvases or buttons in a deck without testing them in the browser.** Arrow keys, taps and print are handled by deck-kit only if the widget is registered with `DeckKit.widget` and drawn with `DeckKit.canvas`.
 
 ---
 
@@ -205,7 +209,7 @@ A good test: open your new slide between two existing slides in the deck. If it 
 
 After **every artifact** you produce — title-slide previews, intermediate iterations, the final deck — do both of these:
 
-1. **Open the file in the browser.** Use `open /absolute/path/to/file.html`. Don't just announce it; actually open it.
+1. **Open the file in the browser.** Use `open /absolute/path/to/file.html` (`xdg-open` on Linux). Don't just announce it; actually open it.
 2. **Send the user the absolute file path** in your message, on its own line, formatted as a path so it's clickable.
 
 For the final deck, also include:
@@ -213,3 +217,78 @@ For the final deck, also include:
 - Any caveats (e.g., "I designed slides 4 and 7 from scratch using the template's design system since you needed a comparison table and a 4-column timeline that the demo deck didn't include").
 
 Do not narrate every step you took. The user wants the artifact + the path + a one-line rationale, not a transcript.
+
+---
+
+## 8. Presenter features (`deck-kit.js`)
+
+Every template loads `deck-kit.js` after its own navigation script. It finds the deck (through `<deck-stage>`, or `window.deckAdapter` in templates with inline navigation) and adds presenter tools without touching the design:
+
+| Key / action | What it does |
+|---|---|
+| `N` | Speaker-notes panel: title, planned minutes, elapsed time, notes, next slide |
+| `M` | Slide menu grouped by section, with planned start minute; click to jump |
+| `T` / `Shift+T` | Talk timer (elapsed vs. plan, ahead / on time / behind); reset. Click it to pause |
+| `F` | Fullscreen |
+| `?` / `Esc` | Shortcut help / close panels |
+| `#7` in the URL | Opens slide 7; the hash follows navigation |
+| Swipe / tap | Touch navigation; taps on buttons, sliders and canvases go to the control |
+| Print → Save as PDF | One slide per page for **every** template; canvases are kept |
+
+Panel text follows `<html lang>`: Vietnamese for `lang="vi"`, English otherwise.
+
+### Slide data the kit reads (all optional)
+
+```html
+<section class="slide" data-title="Why filters" data-sec="Motivation" data-min="3">
+  …slide content…
+  <aside class="notes">What to say, what to click, which question to ask.</aside>
+</section>
+```
+
+- `data-title` — name shown in the menu and notes (falls back to the first heading).
+- `data-sec` — section header in the menu.
+- `data-min` — planned minutes. When any slide has it, the menu shows start minutes, a thin progress bar tracks planned time and the timer compares against the plan.
+- `<aside class="notes">` — never shown on the slide; also accepted: `data-notes="…"` or the `#speaker-notes` JSON array that `deck-stage` templates use.
+
+### Interactive slides
+
+```html
+<canvas id="bellCv"></canvas>
+<input id="sigma" type="range" min="0.3" max="2.5" step="0.05" value="1">
+<script>
+  const cv = document.getElementById('bellCv');
+  function draw() {
+    const { ctx, w, h } = DeckKit.canvas(cv);   // crisp at any scale; units = CSS px
+    ctx.clearRect(0, 0, w, h);
+    /* …draw with document.getElementById('sigma').value… */
+  }
+  document.getElementById('sigma').addEventListener('input', draw);
+  DeckKit.widget(cv, {
+    draw,                       // on enter, on resize, before print
+    tick(dt) { /* animate */ draw(); },   // every frame, only while this slide is visible
+    enter() {}, leave() {},     // optional
+  });
+</script>
+```
+
+Put widget scripts after the `deck-kit.js` tag. Arrow keys on a focused slider move the slider, not the slide.
+
+No-code helpers:
+
+- `<button data-reveal="ans1">Show answer</button> <div id="ans1" hidden>…</div>` — toggles the answer.
+- `<div data-countdown="5:00" data-autostart></div>` — countdown; starts when its slide opens (without `data-autostart`, click to start). Click pauses, double-click resets.
+
+`DeckKit.goTo(i)`, `.next()`, `.prev()`, `.index`, `.length`, `.timer`, `.print()` and the `deckkit:ready` event are available for custom logic. A full working example is `examples/deck-kit-demo/index.html`.
+
+### One-file, offline copy
+
+When the user needs to present without internet or send a single file:
+
+```bash
+node scripts/bundle.mjs path/to/deck/template.html            # → template.bundle.html
+node scripts/bundle.mjs deck.html out.html --all-subsets      # keep CJK font slices too
+```
+
+It inlines the runtime scripts, local CSS and images, and downloads the Google Fonts (latin, latin-ext, vietnamese by default) into the file.
+
