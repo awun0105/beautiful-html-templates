@@ -16,3 +16,8 @@ mockups/
 quiver-output/
 scripts/shot-slides.mjs
 showcase.mp4
+
+# Node tooling
+node_modules/
+*.bundle.html
+*-export/

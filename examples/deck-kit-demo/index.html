@@ -42,23 +42,40 @@
     <aside class="notes">Welcome everyone. These notes live in an &lt;aside class="notes"&gt; inside the slide and never show on screen. The menu (M) lists every slide with its planned start minute, taken from data-min.</aside>
   </section>
 
-  <section class="slide" id="bell" data-title="A belief is a bell curve" data-sec="Live widgets" data-min="3">
-    <h2>A belief is a bell curve</h2>
+  <section class="slide" id="fuse" data-title="Fusing two beliefs" data-sec="Live widgets" data-min="3">
+    <h2>Fusing two beliefs</h2>
     <div class="row">
-      <div class="card" style="flex:1"><canvas id="bellCv"></canvas></div>
+      <div class="card" style="flex:1"><canvas id="fuseCv"></canvas></div>
       <div class="controls">
-        <label>Mean μ <input id="mu" type="range" min="-3" max="3" step="0.1" value="0" /></label>
-        <label>Spread σ <input id="sigma" type="range" min="0.3" max="2.5" step="0.05" value="1" /></label>
+        <label><span>Prediction σ<sub>A</sub> = <output></output></span><input id="sa" type="range" min="0.3" max="3" step="0.05" value="1.2" /></label>
+        <label><span>Sensor σ<sub>B</sub> = <output></output></span><input id="sb" type="range" min="0.3" max="3" step="0.05" value="0.8" /></label>
+        <label><span>Sensor reading = <output></output></span><input id="zb" type="range" min="-3" max="3" step="0.1" value="1.5" /></label>
         <p style="font-size:26px;color:var(--ink-soft)">Arrow keys on a slider move the slider, not the slide.</p>
       </div>
     </div>
-    <aside class="notes">Drag σ: narrow means confident, wide means unsure. The orbiting dot only animates while this slide is visible — widgets on other slides don't tick.</aside>
+    <aside class="notes">Drag σ<sub>B</sub> up: the fused curve slides back toward the prediction. Point out that the fused curve is always narrower than both. Built with DeckKit.bind and DeckKit.plot — colours come from the template's palette.</aside>
   </section>
 
-  <section class="slide" data-title="Signals in motion" data-sec="Live widgets" data-min="2">
-    <h2>Signals in motion</h2>
-    <div class="card" style="flex:1"><canvas id="waveCv"></canvas></div>
-    <aside class="notes">This canvas is redrawn every frame. When you print, deck-kit draws it once more and freezes it into an image, even if nobody opened this slide.</aside>
+  <section class="slide" id="ellipse" data-title="Uncertainty in 2-D" data-sec="Live widgets" data-min="2">
+    <h2>Uncertainty in 2-D is an ellipse</h2>
+    <div class="row">
+      <div class="card" style="flex:1"><canvas id="ellCv"></canvas></div>
+      <div class="controls">
+        <label><span>Correlation ρ = <output></output></span><input id="rho" type="range" min="-0.95" max="0.95" step="0.05" value="0.6" /></label>
+        <p style="font-size:26px;color:var(--ink-soft)">Samples keep streaming while this slide is open; other slides don't animate.</p>
+      </div>
+    </div>
+    <aside class="notes">Slide ρ from negative to positive and the ellipse tilts. When you print, this canvas is drawn once more and kept, even if nobody opened the slide.</aside>
+  </section>
+
+  <section class="slide" data-title="Classroom tools" data-sec="Presenting" data-min="2">
+    <h2>Classroom tools</h2>
+    <ul style="display:flex;flex-direction:column;gap:18px;padding-left:1.1em">
+      <li><kbd>P</kbd> presenter view — notes, next slide and timer in a second window</li>
+      <li><kbd>B</kbd> / <kbd>W</kbd> black or white screen · <kbd>L</kbd> laser pointer</li>
+      <li><kbd>D</kbd> draw on the slide (<kbd>C</kbd> clears, <kbd>Backspace</kbd> undoes) · <kbd>Ctrl</kbd>+<kbd>P</kbd> prints every slide</li>
+    </ul>
+    <aside class="notes">Try D and circle something, then move on and come back: the ink stays with its slide.</aside>
   </section>
 
   <section class="slide" data-title="Quick check" data-sec="Practice" data-min="2">
@@ -83,52 +100,50 @@
 </deck-stage>
 <script src="../../runtime/deck-kit.js"></script>
 <script>
-  // Bell-curve widget: redraws on input, animates a dot while visible.
+  // Fusion widget: sliders → plot, all colours from the template palette.
   (function () {
-    const cv = document.getElementById('bellCv');
-    const mu = document.getElementById('mu'), sg = document.getElementById('sigma');
-    let phase = 0;
+    const cv = document.getElementById('fuseCv');
+    const p = DeckKit.plot(cv, { x: [-4, 4], y: [0, 1.1] });
+    let v = {};
     function draw() {
-      const { ctx, w, h } = DeckKit.canvas(cv);
-      if (!w) return;
-      ctx.clearRect(0, 0, w, h);
-      const m = +mu.value, s = +sg.value;
-      const X = (x) => (x + 5) / 10 * w, Y = (y) => h - 30 - y * (h - 60) / 1.4;
-      ctx.strokeStyle = '#d8d1bd'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(0, Y(0)); ctx.lineTo(w, Y(0)); ctx.stroke();
-      ctx.beginPath();
-      for (let px = 0; px <= w; px += 2) {
-        const x = px / w * 10 - 5, y = Math.exp(-0.5 * ((x - m) / s) ** 2) / (s * Math.sqrt(2 * Math.PI));
-        px ? ctx.lineTo(px, Y(y)) : ctx.moveTo(px, Y(y));
-      }
-      ctx.lineTo(w, Y(0)); ctx.lineTo(0, Y(0)); ctx.closePath();
-      ctx.fillStyle = 'rgba(225,164,194,.45)'; ctx.fill();
-      ctx.strokeStyle = '#2A241B'; ctx.lineWidth = 4; ctx.stroke();
-      const dx = m + s * Math.sin(phase);
-      ctx.fillStyle = '#2A241B'; ctx.beginPath(); ctx.arc(X(dx), Y(0), 12, 0, 7); ctx.fill();
+      if (!cv.offsetWidth) return;
+      const { sa, sb, zb } = v;
+      const k = sa * sa / (sa * sa + sb * sb);            // Kalman gain
+      const mu = k * zb, s = Math.sqrt((1 - k) * sa * sa);
+      p.clear().axes({ xlabel: 'position' })
+        .gauss(0, sa, { color: 0, fill: 0.15 })
+        .gauss(zb, sb, { color: 1, fill: 0.15 })
+        .gauss(mu, s, { color: 2, width: 5, fill: 0.25 })
+        .vline(mu, { color: 2 })
+        .legend([['prediction', 0], ['sensor', 1], [`fused (K = ${k.toFixed(2)})`, 2]]);
     }
-    mu.addEventListener('input', draw); sg.addEventListener('input', draw);
-    DeckKit.widget(cv, { draw, tick(dt) { phase += dt * 2; draw(); } });
+    DeckKit.bind(['sa', 'sb', 'zb'], (vals) => { v = vals; draw(); });
+    DeckKit.widget(cv, { draw });
   })();
 
-  // Wave widget: pure animation.
+  // Ellipse widget: covariance from ρ, streaming samples while visible.
   (function () {
-    const cv = document.getElementById('waveCv');
-    let t = 0;
+    const cv = document.getElementById('ellCv');
+    const p = DeckKit.plot(cv, { x: [-3.5, 3.5], y: [-3.5, 3.5] });
+    let rho = 0.6, pts = [];
+    const sample = () => {
+      const u = Math.sqrt(-2 * Math.log(Math.random() || 1e-9)), t = 2 * Math.PI * Math.random();
+      const a = u * Math.cos(t), b = u * Math.sin(t);
+      return [a, rho * a + Math.sqrt(1 - rho * rho) * b];
+    };
     function draw() {
-      const { ctx, w, h } = DeckKit.canvas(cv);
-      if (!w) return;
-      ctx.clearRect(0, 0, w, h);
-      [['#B7C7A8', 1, 0], ['#E1A4C2', 1.7, 1], ['#2A241B', 0.6, 2]].forEach(([c, f, o]) => {
-        ctx.strokeStyle = c; ctx.lineWidth = 6; ctx.beginPath();
-        for (let x = 0; x <= w; x += 4) {
-          const y = h / 2 + Math.sin(x / w * Math.PI * 4 * f + t + o) * h * 0.3;
-          x ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-        }
-        ctx.stroke();
-      });
+      if (!cv.offsetWidth) return;
+      const cov = [[1, rho], [rho, 1]];
+      p.clear().axes().points(pts, { color: 1, r: 4, alpha: 0.6 })
+        .ellipse(0, 0, cov, { k: 1, color: 0, width: 4 })
+        .ellipse(0, 0, cov, { k: 2, color: 0, width: 2, dash: true });
     }
-    DeckKit.widget(cv, { draw, tick(dt) { t += dt * 1.5; draw(); } });
+    DeckKit.bind('rho', (vals) => { rho = vals.rho; pts = []; draw(); });
+    for (let k = 0; k < 120; k++) pts.push(sample());
+    DeckKit.widget(cv, {
+      draw,
+      tick() { pts.push(sample()); if (pts.length > 300) pts.shift(); draw(); },
+    });
   })();
 </script>
 </body>

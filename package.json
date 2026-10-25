@@ -1,0 +1,19 @@
+{
+  "name": "beautiful-html-templates",
+  "private": true,
+  "type": "module",
+  "description": "HTML slide templates with a shared presenter runtime (deck-kit).",
+  "scripts": {
+    "test": "node scripts/sync-runtime.mjs --check && node scripts/test-templates.mjs",
+    "sync": "node scripts/sync-runtime.mjs",
+    "check": "node scripts/check-deck.mjs",
+    "export": "node scripts/export.mjs",
+    "new-deck": "node scripts/new-deck.mjs",
+    "md": "node scripts/md-to-deck.mjs",
+    "bundle": "node scripts/bundle.mjs"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^23.11.1"
+  },
+  "license": "MIT"
+}

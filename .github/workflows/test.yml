@@ -1,0 +1,27 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  templates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install pdfinfo (page counts)
+        run: sudo apt-get update -q && sudo apt-get install -yq poppler-utils
+      - run: npm ci
+      # Runtime copies match runtime/, then every template + the demo in headless Chrome.
+      - run: npm test
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+      - name: Lint the example decks
+        run: |
+          node scripts/check-deck.mjs examples/deck-kit-demo/index.html
+          node scripts/md-to-deck.mjs examples/md-deck/talk.md --out=/tmp/md-deck
+          node scripts/check-deck.mjs /tmp/md-deck/index.html

@@ -1,6 +1,6 @@
 ---
 name: beautiful-html-templates
-description: Build stunning, professionally-designed HTML slide decks by choosing from 34 curated visual design systems. Use when the user wants to create an HTML presentation, deck, pitch deck, or slideshow using pre-designed templates with distinct aesthetics and zero dependencies. Every template includes presenter tools (speaker notes, slide menu, talk timer, interactive canvas widgets, print to PDF, offline single-file bundling) via deck-kit.js.
+description: Build stunning, professionally-designed HTML slide decks by choosing from 34 curated visual design systems. Use when the user wants to create an HTML presentation, deck, pitch deck, or slideshow using pre-designed templates with distinct aesthetics and zero dependencies. Every template includes presenter tools via deck-kit.js (presenter view on a second screen, speaker notes, talk timer, laser/draw, interactive canvas widgets with plot helpers, print to PDF); scripts create decks from a template or Markdown, lint them, export PDF/PNG/handouts and bundle offline files.
 ---
 
 # Agent Instructions
@@ -61,11 +61,12 @@ Wait for the user to pick.
 
 Once the user picks:
 
-1. Clone the chosen template's full folder into the user's project workspace.
+1. Start the deck with `node scripts/new-deck.mjs <slug> <dest-dir> [--lang=vi] [--title="…"]` (copies the folder as `index.html`, fresh runtime, clears demo notes). Copying the folder by hand works too — keep `deck-kit.js` with it.
 2. Adapt every slide per the rules in §3 (preserve / replace / extend).
 3. If the user's deck needs more slides than the template's demo holds, duplicate existing layouts to fit; if it needs fewer, drop slides from the bottom. Update page-number labels.
 4. **If a slide needs a layout the template doesn't have, design it from scratch using the template's design system** — same fonts, same color palette, same decorative vocabulary, same spacing rhythm, same component grammar. Do not bail back to the user; do not pick a different template; do not import a new visual language. The new slide should look like a natural extension of the template, not a graft. (See §5 — designing missing layouts.)
-5. **Fill in the presenter layer** (§8): a `data-title` on every slide, and — when the user gave talking points or a time budget — `<aside class="notes">` speaker notes, `data-sec` section names and `data-min` planned minutes. For teaching decks, interactive demos go in as `DeckKit.widget(...)`.
+5. **Fill in the presenter layer** (§8): a `data-title` on every slide, and — when the user gave talking points or a time budget — `<aside class="notes">` speaker notes, `data-sec` section names and `data-min` planned minutes. For teaching decks, interactive demos go in as `DeckKit.widget(...)` with `DeckKit.plot` / `DeckKit.bind`.
+6. **Check it:** `node scripts/check-deck.mjs <deck>/index.html` — fix every ERROR (leftover placeholders, broken images, JS errors) and look at each warning (text outside the slide, clipped text).
 
 ### Step 6 — Open the final deck in the browser, send the file path
 
@@ -201,6 +202,7 @@ A good test: open your new slide between two existing slides in the deck. If it 
 - **Don't try to "modernize" old templates** — they're working as designed. If a template feels dated, pick a different template, don't edit the existing one.
 - **Don't forget to open the file in the browser.** Every preview, every iteration, every final deck. Use `open <path>` (`xdg-open` on Linux).
 - **Don't write your own notes panel, timer, menu or print CSS.** `deck-kit.js` already does it for every template; add data to the slides instead (§8).
+- **Don't hand over a deck without running `scripts/check-deck.mjs`.** It catches leftover `[Topic]`-style placeholders and overflowing text you won't see in one screenshot.
 - **Don't put canvases or buttons in a deck without testing them in the browser.** Arrow keys, taps and print are handled by deck-kit only if the widget is registered with `DeckKit.widget` and drawn with `DeckKit.canvas`.
 
 ---
@@ -226,14 +228,19 @@ Every template loads `deck-kit.js` after its own navigation script. It finds the
 
 | Key / action | What it does |
 |---|---|
-| `N` | Speaker-notes panel: title, planned minutes, elapsed time, notes, next slide |
+| `←` `→` Space PgUp/PgDn Home End `1`–`9` | Navigate. Presses during a template's slide transition are queued, not dropped |
+| `P` | **Presenter view**: a second window with current + next slide, notes, timer and plan. Put it on the laptop, keep the original window on the projector (displays in *extend* mode) |
+| `N` | Speaker-notes panel on this screen (use `P` when the screen is projected) |
 | `M` | Slide menu grouped by section, with planned start minute; click to jump |
 | `T` / `Shift+T` | Talk timer (elapsed vs. plan, ahead / on time / behind); reset. Click it to pause |
+| `B` / `W` | Black / white screen |
+| `L` | Laser pointer |
+| `D` | Draw on the slide; `C` clears that slide's ink, `Backspace` undoes, `Esc` stops. Ink stays with its slide |
 | `F` | Fullscreen |
+| `Ctrl/Cmd+P` | Visits every slide (so charts drawn on entry fill in), then prints one slide per page, canvases kept |
 | `?` / `Esc` | Shortcut help / close panels |
 | `#7` in the URL | Opens slide 7; the hash follows navigation |
 | Swipe / tap | Touch navigation; taps on buttons, sliders and canvases go to the control |
-| Print → Save as PDF | One slide per page for **every** template; canvases are kept |
 
 Panel text follows `<html lang>`: Vietnamese for `lang="vi"`, English otherwise.
 
@@ -246,31 +253,37 @@ Panel text follows `<html lang>`: Vietnamese for `lang="vi"`, English otherwise.
 </section>
 ```
 
-- `data-title` — name shown in the menu and notes (falls back to the first heading).
+- `data-title` — name shown in the menu, notes and presenter view (falls back to the first heading).
 - `data-sec` — section header in the menu.
 - `data-min` — planned minutes. When any slide has it, the menu shows start minutes, a thin progress bar tracks planned time and the timer compares against the plan.
 - `<aside class="notes">` — never shown on the slide; also accepted: `data-notes="…"` or the `#speaker-notes` JSON array that `deck-stage` templates use.
+- `data-print-delay="1500"` — extra wait (ms) on that slide before printing/exporting, for long entry animations.
 
 ### Interactive slides
 
 ```html
-<canvas id="bellCv"></canvas>
-<input id="sigma" type="range" min="0.3" max="2.5" step="0.05" value="1">
+<label>Sensor σ <output></output><input id="sigma" type="range" min="0.3" max="3" step="0.05" value="1"></label>
+<canvas id="bellCv" style="width:100%;height:600px"></canvas>
 <script>
   const cv = document.getElementById('bellCv');
+  const p = DeckKit.plot(cv, { x: [-4, 4], y: [0, 1.2] });   // data coordinates
+  let v = {};
   function draw() {
-    const { ctx, w, h } = DeckKit.canvas(cv);   // crisp at any scale; units = CSS px
-    ctx.clearRect(0, 0, w, h);
-    /* …draw with document.getElementById('sigma').value… */
+    p.clear().axes({ xlabel: 'x' })
+      .gauss(0, 1, { color: 0, fill: true })                // colour 0, 1, 2… = template accents
+      .gauss(1.5, v.sigma, { color: 1, fill: true })
+      .legend([['prediction', 0], ['sensor', 1]]);
   }
-  document.getElementById('sigma').addEventListener('input', draw);
-  DeckKit.widget(cv, {
-    draw,                       // on enter, on resize, before print
-    tick(dt) { /* animate */ draw(); },   // every frame, only while this slide is visible
-    enter() {}, leave() {},     // optional
-  });
+  DeckKit.bind(['sigma'], (vals) => { v = vals; draw(); });  // also fills the <output>
+  DeckKit.widget(cv, { draw, tick(dt) { /* animate, only while visible */ } });
 </script>
 ```
+
+- `DeckKit.widget(target, { enter, leave, draw, tick(dt), print })` — `draw` runs on enter, resize and before print; `tick` every frame while the slide is visible.
+- `DeckKit.plot(canvas, { x, y })` — `clear() axes() fn(f) line(pts) points(pts) gauss(mu, sigma) vline(x) hline(y) ellipse(cx, cy, cov) text() legend()`; chainable, sized for any screen, styled from the template.
+- `DeckKit.bind(inputs, fn)` — ids / elements / a container; calls `fn(values)` now and on every change.
+- `DeckKit.palette(el)` — `{ ink, bg, mute, grid, accents[] }` read from the template's CSS.
+- `DeckKit.canvas(cv)` — `{ ctx, w, h }` for hand-drawn canvases in CSS pixels.
 
 Put widget scripts after the `deck-kit.js` tag. Arrow keys on a focused slider move the slider, not the slide.
 
@@ -279,16 +292,30 @@ No-code helpers:
 - `<button data-reveal="ans1">Show answer</button> <div id="ans1" hidden>…</div>` — toggles the answer.
 - `<div data-countdown="5:00" data-autostart></div>` — countdown; starts when its slide opens (without `data-autostart`, click to start). Click pauses, double-click resets.
 
-`DeckKit.goTo(i)`, `.next()`, `.prev()`, `.index`, `.length`, `.timer`, `.print()` and the `deckkit:ready` event are available for custom logic. A full working example is `examples/deck-kit-demo/index.html`.
+`DeckKit.goTo(i)`, `.next()`, `.prev()`, `.index`, `.length`, `.timer`, `.presenter()`, `.print()` and the `deckkit:ready` event are available for custom logic. A full working example is `examples/deck-kit-demo/index.html`.
 
-### One-file, offline copy
+### Decks written from scratch
 
-When the user needs to present without internet or send a single file:
+If a deck doesn't use `<deck-stage>`, expose its navigation so deck-kit can drive it — one line next to the slide-index variable:
 
-```bash
-node scripts/bundle.mjs path/to/deck/template.html            # → template.bundle.html
-node scripts/bundle.mjs deck.html out.html --all-subsets      # keep CJK font slices too
+```js
+window.deckAdapter = { go: (i) => showSlide(i), index: () => current };   // + nativeScroll: true for scroll-snap decks
 ```
 
-It inlines the runtime scripts, local CSS and images, and downloads the Google Fonts (latin, latin-ext, vietnamese by default) into the file.
+Without it deck-kit falls back to guessing the current slide from `.active` / `.is-active` and stepping with arrow keys, which is fragile.
 
+---
+
+## 9. Tools (`scripts/`)
+
+Run `npm install` once in the repo root (installs `puppeteer-core`; it uses the Chrome already on the machine, or `CHROME_PATH`).
+
+| Command | What it does |
+|---|---|
+| `node scripts/new-deck.mjs <slug> <dir> [--lang=vi] [--title=…]` | Start a deck from a template |
+| `node scripts/md-to-deck.mjs talk.md --theme=<slug>` | Markdown → working deck in standard layouts, dressed in the template's fonts and palette (see `examples/md-deck/talk.md`). Use it to get content and timing right fast; move slides into the template's own layouts for the final look |
+| `node scripts/check-deck.mjs <deck.html> [--strict]` | Lint: placeholders, broken images, JS errors (errors); overflow, clipping, missing titles/notes/minutes (warnings) |
+| `node scripts/export.mjs <deck.html> [--pdf] [--png] [--handout]` | `slides.pdf`, `slide-NN.png`, and an A4 `handout.pdf` with notes under each slide |
+| `node scripts/bundle.mjs <deck.html> [--all-subsets]` | One self-contained offline `.html` with fonts embedded |
+| `node scripts/sync-runtime.mjs [--check]` | Copy `runtime/` into every template (edit runtime files only in `runtime/`) |
+| `npm test` | Runtime-copy check + headless test of all templates and the demo (also runs in GitHub Actions) |

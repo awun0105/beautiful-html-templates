@@ -16,15 +16,26 @@ Clone https://github.com/zarazhangrui/beautiful-html-templates and follow the in
 
 Every template ships with [`deck-kit.js`](./runtime/deck-kit.js), a presenter layer that sits on top of the template's design:
 
-- **Speaker notes** (`N`): write `<aside class="notes">` inside a slide; the panel shows the notes, planned time and the next slide.
-- **Slide menu** (`M`): slides grouped by `data-sec`, with the planned start minute from `data-min`.
-- **Talk timer** (`T`): elapsed time against the plan, colored ahead / on time / behind.
-- **Fullscreen** (`F`), **`#N` deep links**, **swipe** on touch screens.
-- **Interactive slides**: `DeckKit.widget()` for live canvases and sliders (only the visible slide animates), `data-reveal` answer buttons, `data-countdown` timers.
-- **Print → Save as PDF**: one slide per page in every template, canvases included.
-- **Offline single file**: `node scripts/bundle.mjs deck.html` inlines scripts, images and Google Fonts.
+- **Presenter view** (`P`): a second window with the current and next slide, speaker notes and a timer against your plan; the projector shows only the slide.
+- **Speaker notes** (`N`), **slide menu** (`M`) with planned minutes, **talk timer** (`T`).
+- **In the room**: black/white screen (`B`/`W`), laser pointer (`L`), draw on slides (`D`), fullscreen (`F`), `#N` deep links, swipe.
+- **Interactive slides**: `DeckKit.widget()` with `DeckKit.plot()` / `DeckKit.bind()` for live charts and sliders in the template's colours; `data-reveal` answers, `data-countdown` timers.
+- **Print** (`Ctrl+P`): every slide visited first so charts fill in, then one slide per page, canvases included.
 
 See [`examples/deck-kit-demo`](./examples/deck-kit-demo/index.html) and [`AGENTS.md` § 8](./AGENTS.md#8-presenter-features-deck-kitjs).
+
+## Tools
+
+```bash
+npm install                                             # once (uses your installed Chrome)
+node scripts/new-deck.mjs vellum my-talk --lang=vi      # start from a template
+node scripts/md-to-deck.mjs talk.md --theme=vellum      # or write it in Markdown
+node scripts/check-deck.mjs my-talk/index.html          # lint before presenting
+node scripts/export.mjs my-talk/index.html              # PDF + PNGs + handout with notes
+node scripts/bundle.mjs my-talk/index.html              # one offline .html file
+```
+
+Details in [`AGENTS.md` § 9](./AGENTS.md#9-tools-scripts).
 
 ## Gallery
 

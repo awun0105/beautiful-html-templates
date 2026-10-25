@@ -666,10 +666,16 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: flex-end;
       gap: 12px;
       flex: 1;
       max-width: 100px;
+      /* Full chart height so the bars' percentage heights resolve; the
+         label hangs below the baseline instead of taking bar space. */
+      height: 100%;
+      position: relative;
     }
+    .chart-bar-group .chart-bar-label { position: absolute; top: 100%; margin-top: 10px; }
 
     .chart-bar {
       width: 100%;

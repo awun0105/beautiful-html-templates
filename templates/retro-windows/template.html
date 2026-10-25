@@ -1133,7 +1133,7 @@ const slides = document.querySelectorAll('.slide');
 const totalSlides = slides.length;
 let currentSlide = 0;
 // deck-kit.js reads this to drive notes, menu, deep links and print.
-window.deckAdapter = { go: (i) => { currentSlide = i; showSlide(i); }, index: () => currentSlide, touch: false };
+window.deckAdapter = { go: (i) => { currentSlide = i; showSlide(i); }, index: () => currentSlide };
 
 function showSlide(index) {
   slides.forEach((s, i) => {
