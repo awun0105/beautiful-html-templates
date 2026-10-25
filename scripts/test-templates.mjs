@@ -6,17 +6,18 @@
  *   node scripts/test-templates.mjs                 # everything
  *   node scripts/test-templates.mjs vellum,coral    # some templates (skips the demo)
  *   node scripts/test-templates.mjs demo            # only the demo / presenter checks
+ *   node scripts/test-templates.mjs features        # only steps, maths, code, quiz, charts…
  *   node scripts/test-templates.mjs --keep=out/     # keep PDFs / screenshots
  *
  * Exit code 1 when anything fails.
  */
 
-import { readdirSync, mkdirSync, writeFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { readdirSync, mkdirSync, writeFileSync, mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
-import { launch, openDeck, sleep } from './lib/browser.mjs';
+import { launch, openDeck, sleep, fileUrl } from './lib/browser.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -316,6 +317,259 @@ if (!only || only === "demo") {
   await fresh.evaluate(() => DeckKit.cleanupPrint());
   ok('no console errors', !page._errors.length && !fresh._errors.length, [...page._errors, ...fresh._errors].join(' | '));
   await page.close(); await fresh.close();
+}
+
+// ── Features: steps, maths, code, quiz, charts, stepper, compare, hotspots, QR, zoom ──
+if (!only || only === 'features') {
+  const deck = resolve(root, 'examples/features/index.html');
+  const ok = (name, cond, extra = '') => { if (!cond) failed++; console.log(`${cond ? 'ok  ' : 'FAIL'} features: ${name} ${extra}`); };
+  const page = await openDeck(browser, deck, { width: 1600, height: 900 });
+  await page.evaluate(() => DeckKit.settle(0, { min: 200 }));
+  const at = (id) => page.evaluate((id) => DeckKit.slides.findIndex((s) => s.id === id), id);
+  const go = async (i) => { await page.evaluate((i) => DeckKit.goTo(i), i); await page.waitForFunction((i) => DeckKit.index === i, { timeout: 5000 }, i).catch(() => {}); await page.evaluate((i) => DeckKit.settle(i, { min: 250 }), i); };
+  const steps = () => page.evaluate(() => ({ i: DeckKit.index, n: DeckKit.steps.n, total: DeckKit.steps.total, off: DeckKit.slides[DeckKit.index].querySelectorAll('.dk-step-off').length }));
+
+  // Steps: → reveals, then moves on; ← back into a slide shows every step.
+  let st = await steps();
+  ok('slide starts with its steps hidden', st.i === 0 && st.n === 0 && st.total === 4 && st.off === 5, JSON.stringify(st));
+  await page.keyboard.press('ArrowRight'); await sleep(150);
+  st = await steps();
+  ok('→ reveals the first step without changing slide', st.i === 0 && st.n === 1 && st.off === 4, JSON.stringify(st));
+  for (let k = 0; k < 3; k++) { await page.keyboard.press('ArrowRight'); await sleep(120); }
+  st = await steps();
+  ok('steps with the same number appear together', st.n === 4 && st.off === 0, JSON.stringify(st));
+  await page.keyboard.press('ArrowRight');
+  await page.waitForFunction(() => DeckKit.index === 1, { timeout: 4000 }).catch(() => {});
+  ok('→ after the last step goes to the next slide', (await steps()).i === 1);
+  await page.keyboard.press('ArrowLeft');
+  await page.waitForFunction(() => DeckKit.index === 0, { timeout: 4000 }).catch(() => {});
+  await sleep(200);
+  st = await steps();
+  ok('← into a slide shows all its steps', st.i === 0 && st.n === 4 && st.off === 0, JSON.stringify(st));
+  await page.keyboard.press('ArrowLeft'); await sleep(150);
+  ok('← hides the last step', (await steps()).n === 3);
+
+  // Maths: rendered, prices left alone, source kept for saving.
+  const mi = await at('maths');
+  await go(mi);
+  const math = await page.evaluate((i) => {
+    const s = DeckKit.slides[i];
+    const ps = s.querySelectorAll('p');
+    return { katex: s.querySelectorAll('.katex').length, display: s.querySelectorAll('.katex-display').length, prices: ps[1].querySelectorAll('.dk-math').length, src: DeckKit.sourceHtml(ps[0]), title: DeckKit.titleOf(i) };
+  }, mi);
+  ok('maths rendered with KaTeX (inline + display)', math.katex >= 2 && math.display === 1, JSON.stringify(math).slice(0, 120));
+  ok('prices like $5 and $10 stay text', math.prices === 0);
+  ok('source of a maths paragraph is what the author wrote', /\$p\(x \\mid z\) \\propto p\(z \\mid x\)\\,p\(x\)\$/.test(math.src) && !/katex|dk-/.test(math.src));
+
+  // Edit mode on a maths paragraph saves the TeX source, never the rendering.
+  {
+    const src = readFileSync(deck, 'utf8');
+    await page.evaluate((src) => {
+      window.__written = null;
+      window.showOpenFilePicker = async () => [{ name: 'index.html', queryPermission: async () => 'granted',
+        getFile: async () => ({ text: async () => src, lastModified: 0 }), createWritable: async () => ({ write: async (t) => { window.__written = t; }, close: async () => {} }) }];
+    }, src);
+    const box = await page.evaluate((i) => { const r = DeckKit.slides[i].querySelector('.katex').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, mi);
+    await page.keyboard.press('e');
+    await page.mouse.click(box.x, box.y);
+    await page.mouse.click(box.x, box.y, { clickCount: 2 });
+    await sleep(100);
+    await page.keyboard.press('End');
+    await page.keyboard.type(' QA');
+    await page.keyboard.press('Escape');
+    const rerendered = await page.evaluate((i) => DeckKit.slides[i].querySelectorAll('p')[0].querySelectorAll('.dk-math').length, mi);
+    await page.keyboard.press('e');
+    await page.waitForFunction(() => window.__written !== null, { timeout: 4000 }).catch(() => {});
+    const out = (await page.evaluate(() => window.__written)) || '';
+    const a = new Set(src.split('\n'));
+    const changed = out.split('\n').filter((l) => !a.has(l));
+    ok('typing into maths edits the TeX and saves only that line', changed.length === 1 && /\$p\(x \\mid z\)[^\n]*QA/.test(changed[0]) && !/katex|dk-|data-dk/.test(out), changed.join(' | ').slice(0, 160));
+    ok('maths re-renders after typing', rerendered >= 1);
+  }
+
+  // Code: highlighted, line steps, copy button, source stays plain.
+  const ci = await at('code');
+  await go(ci);
+  const code = await page.evaluate((i) => {
+    const s = DeckKit.slides[i], pre = s.querySelector('pre');
+    return { kw: pre.querySelectorAll('.dk-tk-kw').length, com: pre.querySelectorAll('.dk-tk-com').length, lines: pre.querySelectorAll('.dk-ln').length, copy: !!pre.querySelector('.dk-copy'), total: DeckKit.steps.total, src: DeckKit.sourceHtml(pre) };
+  }, ci);
+  ok('code highlighted in template colours', code.kw >= 2 && code.com >= 2 && code.lines === 6, JSON.stringify(code).slice(0, 100));
+  ok('code has a copy button and its source stays plain', code.copy && !/<span|dk-|Copy/.test(code.src) && /def kalman_step/.test(code.src));
+  ok('data-lines segments are steps', code.total === 3);
+  await page.keyboard.press('ArrowRight'); await sleep(100);
+  const dim1 = await page.evaluate((i) => Array.from(DeckKit.slides[i].querySelectorAll('.dk-ln'), (l) => l.classList.contains('dk-dim') ? 0 : 1).join(''), ci);
+  await page.keyboard.press('ArrowRight'); await sleep(100);
+  const dim2 = await page.evaluate((i) => Array.from(DeckKit.slides[i].querySelectorAll('.dk-ln'), (l) => l.classList.contains('dk-dim') ? 0 : 1).join(''), ci);
+  ok('→ highlights lines 1-2, then line 4', dim1 === '110000' && dim2 === '000100', `${dim1} ${dim2}`);
+
+  // Quiz.
+  const qi = await at('quiz');
+  await go(qi);
+  await page.evaluate((i) => DeckKit.slides[i].querySelectorAll('[data-option]')[0].click(), qi);
+  const quiz = await page.evaluate((i) => {
+    const s = DeckKit.slides[i], o = s.querySelectorAll('[data-option]');
+    return { wrong: o[0].classList.contains('dk-wrong'), right: o[2].classList.contains('dk-right'), explain: s.querySelector('[data-explain]').offsetHeight > 0, idx: DeckKit.index };
+  }, qi);
+  ok('quiz marks the choice and the right answer, shows the explanation', quiz.wrong && quiz.right && quiz.explain && quiz.idx === qi, JSON.stringify(quiz));
+  await go(qi + 1); await go(qi);
+  ok('quiz clears when the slide is left', await page.evaluate((i) => !DeckKit.slides[i].querySelector('.dk-answered, .dk-wrong'), qi));
+
+  // Charts: drawn pixels on the JSON canvas and the table chart.
+  const chi = await at('charts');
+  await go(chi);
+  const charts = await page.evaluate((i) => {
+    const s = DeckKit.slides[i];
+    const ink = (cv) => { if (!cv || !cv.width) return 0; const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data; let n = 0; for (let k = 3; k < d.length; k += 16) if (d[k] > 0) n++; return n; };
+    const t = s.querySelector('table');
+    return { bar: ink(s.querySelector('canvas[data-chart]')), line: ink(s.querySelector('.dk-chart-box canvas')), tableHidden: t.getBoundingClientRect().width <= 1 };
+  }, chi);
+  ok('bar chart from data-chart JSON is drawn', charts.bar > 500, `${charts.bar}`);
+  ok('line chart from a table is drawn, table hidden', charts.line > 200 && charts.tableHidden, JSON.stringify(charts));
+
+  // Stepper: declarative frames and a JS simulation.
+  const si = await at('stepper');
+  await go(si);
+  const frames = () => page.evaluate((i) => Array.from(DeckKit.slides[i].querySelectorAll('[data-frame]'), (f) => (f.classList.contains('dk-frame-off') ? 0 : 1)).join(''), si);
+  ok('frames: only the first is shown', (await frames()) === '1000');
+  await page.evaluate((i) => DeckKit.slides[i].querySelector('[data-stepper] .dk-stepper [data-s="next"]').click(), si);
+  ok('⏭ shows the next frame', (await frames()) === '0100');
+  await page.evaluate((i) => DeckKit.slides[i].querySelector('#walk + .dk-stepper [data-s="play"]').click(), si);
+  await sleep(700);
+  const n1 = await page.evaluate((i) => DeckKit.slides[i].querySelector('#walk + .dk-stepper .dk-stepper-n').textContent, si);
+  ok('▶ plays the simulation', /^([1-9]\d*) \/ 60$/.test(n1), n1);
+  await go(si + 1);
+  const n2 = await page.evaluate((i) => DeckKit.slides[i].querySelector('#walk + .dk-stepper .dk-stepper-n').textContent, si);
+  await sleep(500);
+  const n3 = await page.evaluate((i) => DeckKit.slides[i].querySelector('#walk + .dk-stepper .dk-stepper-n').textContent, si);
+  ok('leaving the slide pauses it', n2 === n3, `${n2} ${n3}`);
+
+  // Before / after.
+  const cmi = await at('compare');
+  await go(cmi);
+  const cmp = await page.evaluate((i) => {
+    const box = DeckKit.slides[i].querySelector('[data-compare]'), r = box.querySelector('input[type=range]');
+    const before = box.style.getPropertyValue('--dk-cmp');
+    r.value = '80'; r.dispatchEvent(new Event('input', { bubbles: true }));
+    return { before, after: box.style.getPropertyValue('--dk-cmp'), labels: box.querySelectorAll('.dk-cmp-label').length, src: DeckKit.sourceHtml(box.parentElement) };
+  }, cmi);
+  ok('compare slider starts at data-compare and follows the input', cmp.before === '35%' && cmp.after === '80%' && cmp.labels === 2, JSON.stringify(cmp).slice(0, 90));
+  ok('compare source has no generated parts', !/dk-|type="range"|--dk/.test(cmp.src));
+
+  // Hotspots.
+  const hi = await at('hotspots');
+  await go(hi);
+  const hs = await page.evaluate(async (i) => {
+    const s = DeckKit.slides[i], d = s.querySelectorAll('.dk-hs-dot'), t = s.querySelectorAll('[data-hotspot]');
+    d[1].click();
+    const one = [...t].map((x) => (x.classList.contains('dk-open') ? 1 : 0)).join('');
+    await new Promise((r) => setTimeout(r, 300));
+    const vis = getComputedStyle(t[1]).visibility;
+    d[2].click();
+    const two = [...t].map((x) => (x.classList.contains('dk-open') ? 1 : 0)).join('');
+    return { dots: d.length, one, two, vis, idx: DeckKit.index };
+  }, hi);
+  ok('hotspot dots open one bubble at a time', hs.dots === 3 && hs.one === '010' && hs.two === '001' && hs.vis === 'visible' && hs.idx === hi, JSON.stringify(hs));
+
+  // QR.
+  const qri = await at('qr');
+  await go(qri);
+  const qr = await page.evaluate((i) => { const p = DeckKit.slides[i].querySelector('svg.dk-qr path'); return p ? p.getAttribute('d').length : 0; }, qri);
+  ok('QR code drawn as SVG', qr > 500, `${qr}`);
+
+  // Zoom.
+  const zi = await at('zoom');
+  await go(zi);
+  const zr = await page.evaluate((i) => { const r = DeckKit.slides[i].querySelector('.tiny').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; }, zi);
+  await page.keyboard.press('z');
+  await page.mouse.move(zr.x, zr.y - 10); await page.mouse.down(); await page.mouse.move(zr.x + zr.w / 2, zr.y + zr.h + 10, { steps: 5 }); await page.mouse.up();
+  await sleep(600);
+  const zoomed = await page.evaluate((i) => +DeckKit.slides[i].style.scale || 1, zi);
+  await page.keyboard.press('Escape');
+  await sleep(700);
+  const unz = await page.evaluate((i) => ({ scale: DeckKit.slides[i].style.scale, origin: DeckKit.slides[i].style.transformOrigin }), zi);
+  ok('Z + drag zooms into the box, Esc zooms out', zoomed > 1.5 && !unz.scale && !unz.origin, `${zoomed} ${JSON.stringify(unz)}`);
+
+  // Print and exports show every step; the live state comes back afterwards.
+  await go(0);
+  const pr = await page.evaluate(() => {
+    DeckKit.preparePrint();
+    const during = document.querySelectorAll('.dk-step-off, .dk-ln.dk-dim').length;
+    DeckKit.cleanupPrint();
+    return { during, after: DeckKit.slides[0].querySelectorAll('.dk-step-off').length };
+  });
+  ok('print shows every step, then restores', pr.during === 0 && pr.after === 5, JSON.stringify(pr));
+  ok('no page errors', !page._errors.length, page._errors.join(' | ').slice(0, 200));
+
+  // Presenter view: → reveals steps on the audience screen; quiz answers sync.
+  await page.evaluate(() => { localStorage.clear(); });
+  const popup = browser.waitForTarget((t) => t.url().includes('dk=presenter'), { timeout: 8000 }).catch(() => null);
+  await page.keyboard.press('p');
+  const pv = await (await popup)?.page();
+  if (pv) {
+    await pv.waitForFunction(() => window.DeckKit && document.querySelector('#deck-kit'), { timeout: 10000 });
+    await sleep(1500);
+    await pv.keyboard.press('ArrowRight');
+    await sleep(600);
+    const a = await page.evaluate(() => ({ i: DeckKit.index, n: DeckKit.steps.n }));
+    const pos = await pv.evaluate(() => document.querySelector('#deck-kit').shadowRoot.querySelector('.dk-pos').textContent);
+    ok('→ in the presenter reveals a step on the audience screen', a.i === 0 && a.n === 1 && /1\/4/.test(pos), `${JSON.stringify(a)} "${pos}"`);
+    await page.evaluate((i) => DeckKit.goTo(i), qi);
+    await sleep(1500);
+    let f = null;
+    for (const fr of pv.frames()) { try { if (fr.url().includes('dk=mirror') && (await fr.evaluate(() => DeckKit.index)) === qi && !f) f = fr; } catch {} }
+    if (f) await f.evaluate((i) => DeckKit.slides[i].querySelectorAll('[data-option]')[2].click(), qi);
+    await sleep(600);
+    ok('quiz answered in the preview shows on the audience screen', await page.evaluate((i) => DeckKit.slides[i].querySelectorAll('[data-option]')[2].classList.contains('dk-right'), qi));
+    await pv.close();
+  } else ok('presenter opens', false);
+  await page.close();
+
+  // Markdown: maths kept intact, code steps, chart, quiz, steps.
+  {
+    const dir = mkdtempSync(join(tmpdir(), 'deck-mdf-'));
+    writeFileSync(join(dir, 'f.md'), [
+      '# Features', 'sub', '', '---', '<!-- steps: true -->', '## Steps and maths', '- one $a_1 + b_2$ and *em*', '- two costs $5 and $10', '',
+      '---', '## Code', '```python {1|2}', 'x = 1', 'y = 2', '```', '',
+      '---', '## Chart', '```chart', '{"type":"bar","labels":["a","b"],"data":[1,2]}', '```', '',
+      '---', '## Quiz', '- [ ] no', '- [x] yes', '- [ ] maybe', '',
+    ].join('\n'));
+    let html = '';
+    try { execSync(`node "${resolve(root, 'scripts/md-to-deck.mjs')}" "${join(dir, 'f.md')}" --theme=vellum --out="${join(dir, 'deck')}"`); html = readFileSync(join(dir, 'deck/index.html'), 'utf8'); } catch (e) { html = String(e.message); }
+    ok('md-to-deck: maths untouched by emphasis', /\$a_1 \+ b_2\$/.test(html) && /<em>em<\/em>/.test(html));
+    ok('md-to-deck: steps, code lines, chart, quiz', /<ul data-steps>/.test(html) && /<pre class="code" data-lines="1\|2"><code class="language-python">/.test(html) &&
+      /<canvas class="chart" data-chart="\{&quot;type&quot;:&quot;bar&quot;/.test(html) && /<ul class="quiz" data-quiz><li data-option>no<\/li><li data-option data-correct>yes<\/li>/.test(html));
+    const mp = await openDeck(browser, join(dir, 'deck/index.html'), { width: 1600, height: 900 });
+    await mp.evaluate(() => DeckKit.goTo(1)); await sleep(600);
+    await mp.evaluate(() => DeckKit.settle(1, { min: 200 }));
+    const md = await mp.evaluate(() => ({ katex: DeckKit.slides[1].querySelectorAll('.katex').length, total: DeckKit.steps.total, errors: 0 }));
+    ok('md deck renders maths and counts list steps', md.katex === 1 && md.total === 2, JSON.stringify(md));
+    ok('md deck: no page errors', !mp._errors.length, mp._errors.join(' | ').slice(0, 200));
+    await mp.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+
+  // Offline bundle: KaTeX and the QR library embedded, nothing fetched.
+  {
+    const dir = mkdtempSync(join(tmpdir(), 'deck-bundle-'));
+    const outFile = join(dir, 'features.html');
+    let log = '';
+    try { log = execSync(`node "${resolve(root, 'scripts/bundle.mjs')}" "${deck}" "${outFile}"`, { encoding: 'utf8' }); } catch (e) { log = String(e.stdout || e.message); }
+    const html = existsSync(outFile) ? readFileSync(outFile, 'utf8') : '';
+    ok('bundle embeds KaTeX (with fonts) and the QR library', /data-dk-lib="katex"/.test(html) && /data-dk-lib="qr"/.test(html) && /font-family:KaTeX_Main[^}]*base64/.test(html), log.split('\n')[0].slice(0, 120));
+    const bp = await browser.newPage();
+    await bp.setViewport({ width: 1600, height: 900 });
+    await bp.setRequestInterception(true);
+    let remote = 0;
+    bp.on('request', (r) => { if (/^https?:/.test(r.url())) { remote += /katex|qrcode/.test(r.url()) ? 1 : 0; r.abort(); } else r.continue(); });
+    await bp.goto(fileUrl(outFile), { waitUntil: 'load' });
+    await bp.waitForFunction(() => window.DeckKit && DeckKit.length > 0, { timeout: 15000 });
+    await sleep(800);
+    const off = await bp.evaluate(() => ({ katex: document.querySelectorAll('.katex').length, qr: !!document.querySelector('svg.dk-qr') }));
+    ok('bundled deck renders maths and QR offline', off.katex >= 2 && off.qr && remote === 0, JSON.stringify(off) + ` remote=${remote}`);
+    await bp.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 // ── Tools: PowerPoint import, deploy dry run ───────────────────────────────

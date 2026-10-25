@@ -74,7 +74,7 @@ Once the user picks:
 2. Adapt every slide per the rules in §3 (preserve / replace / extend).
 3. If the user's deck needs more slides than the template's demo holds, duplicate existing layouts to fit; if it needs fewer, drop slides from the bottom. Update page-number labels.
 4. **If a slide needs a layout the template doesn't have, design it from scratch using the template's design system** — same fonts, same color palette, same decorative vocabulary, same spacing rhythm, same component grammar. Do not bail back to the user; do not pick a different template; do not import a new visual language. The new slide should look like a natural extension of the template, not a graft. (See §5 — designing missing layouts.)
-5. **Fill in the presenter layer** (§8): a `data-title` on every slide, and — when the user gave talking points or a time budget — `<aside class="notes">` speaker notes, `data-sec` section names and `data-min` planned minutes. For teaching decks, interactive demos go in as `DeckKit.widget(...)` with `DeckKit.plot` / `DeckKit.bind`.
+5. **Fill in the presenter layer** (§8): a `data-title` on every slide, and — when the user gave talking points or a time budget — `<aside class="notes">` speaker notes, `data-sec` section names and `data-min` planned minutes. For teaching decks, interactive demos go in as `DeckKit.widget(...)` with `DeckKit.plot` / `DeckKit.bind`; steps, maths, code walkthroughs, quizzes, charts, before/after sliders, hotspots and QR codes are one attribute each — pick them from [`widgets-reference.md`](./widgets-reference.md) when they fit the request.
 6. **Check it:** `node scripts/check-deck.mjs <deck>/index.html` — fix every ERROR (leftover placeholders, broken images, JS errors) and look at each warning (text outside the slide, clipped text).
 
 ### Step 6 — Open the final deck in the browser, send the file path
@@ -227,7 +227,7 @@ Don't add animation to a template by default. When the user asks for motion ("ma
 - **Don't strip "extra" decoration thinking it's noise.** Corner brackets, paper grain, SVG ornaments — they are part of the identity.
 - **Don't try to "modernize" old templates** — they're working as designed. If a template feels dated, pick a different template, don't edit the existing one.
 - **Don't forget to open the file in the browser.** Every preview, every iteration, every final deck. Use `open <path>` (`xdg-open` on Linux).
-- **Don't write your own notes panel, timer, menu or print CSS.** `deck-kit.js` already does it for every template; add data to the slides instead (§8).
+- **Don't write your own notes panel, timer, menu or print CSS** — or your own quiz, chart, step-reveal, code highlighter or QR code. `deck-kit.js` already does it for every template; add attributes to the slides instead (§8, `widgets-reference.md`).
 - **Don't hand over a deck without running `scripts/check-deck.mjs`.** It catches leftover `[Topic]`-style placeholders and overflowing text you won't see in one screenshot.
 - **Don't put canvases or buttons in a deck without testing them in the browser.** Arrow keys, taps and print are handled by deck-kit only if the widget is registered with `DeckKit.widget` and drawn with `DeckKit.canvas`.
 
@@ -254,7 +254,7 @@ Every template loads `deck-kit.js` after its own navigation script. It finds the
 
 | Key / action | What it does |
 |---|---|
-| `←` `→` Space PgUp/PgDn Home End `1`–`9` | Navigate. Presses during a template's slide transition are queued, not dropped |
+| `←` `→` Space PgUp/PgDn Home End `1`–`9` | Navigate. `→` first reveals the slide's next step (`data-step`), `←` hides it. Presses during a template's slide transition are queued, not dropped |
 | `P` | **Presenter view**: a second window with current + next slide, notes, timer and plan. Put it on the laptop, keep the original window on the projector (displays in *extend* mode). Sliders, inputs and revealed answers stay in sync both ways — you can drive a demo from the laptop's preview. **✎ Edit** turns the notes into an editor (changes show at once and survive a reload as a draft); **💾 Save to file** writes them into the deck's HTML (Chrome/Edge: pick the deck file once; other browsers get `notes.json` for `scripts/apply-notes.mjs`) |
 | `N` | Speaker-notes panel on this screen (use `P` when the screen is projected) |
 | `M` | Slide menu grouped by section, with planned start minute; click to jump |
@@ -262,6 +262,7 @@ Every template loads `deck-kit.js` after its own navigation script. It finds the
 | `B` / `W` | Black / white screen |
 | `L` | Laser pointer |
 | `D` | Draw on the slide; `C` clears that slide's ink, `Backspace` undoes, `Esc` stops. Ink stays with its slide |
+| `Z` | Zoom: drag a box (or click a point) to magnify that part of the slide; `Z` / `Esc` zooms out |
 | `F` | Fullscreen |
 | `Ctrl/Cmd+P` | Visits every slide (so charts drawn on entry fill in), then prints one slide per page, canvases kept |
 | `E` | **Edit mode**: click to select, drag to move, drag the handles to resize (corners scale text), double-click to retype, `Del` hides, arrows nudge, `Ctrl+Z`/`Ctrl+Y`. `E` again **saves into the HTML file** — only the edited tags change (`style="translate: …; width: …"` and new text). If the file changed on disk after the page was opened (e.g. you edited it), saving stops and asks for a reload (the edits stay as a draft); elements a template's script creates at runtime can't be saved and are reported |
@@ -324,6 +325,25 @@ No-code helpers:
 
 `DeckKit.goTo(i)`, `.next()`, `.prev()`, `.index`, `.length`, `.timer`, `.presenter()`, `.print()` and the `deckkit:ready` event are available for custom logic. A full working example is `examples/deck-kit-demo/index.html`.
 
+### More interactive features — see `widgets-reference.md`
+
+[`widgets-reference.md`](./widgets-reference.md) lists **every** attribute and API with examples and limits. Read it whenever the user wants a slide to do something (reveal, quiz, chart, demo), and use these instead of writing your own:
+
+| Want | Use |
+|---|---|
+| Reveal bullets / parts one per click | `data-step`, `data-step="2"`, `<ul data-steps>` |
+| Formulas | `$…$`, `$$…$$` (KaTeX) |
+| Code, walked through line by line | `<pre data-lines="1-2\|4"><code class="language-py">`, copy button included |
+| Multiple-choice question | `<div data-quiz>` + `data-option` / `data-correct` / `data-explain` |
+| Bar / line / pie chart from numbers | `<canvas data-chart='{…}'>`, `<table data-chart="bar">`, `DeckKit.chart()` |
+| Play / pause / step a process or simulation | `<div data-stepper>` + `[data-frame]`, `DeckKit.stepper()` |
+| Before / after images | `<div data-compare>` with two children |
+| Explain parts of a picture | `[data-hotspot="x%,y%"]` inside `[data-hotspots]` |
+| Link for the audience's phones | `<div data-qr="https://…">` |
+| Show small detail while talking | nothing to add — the presenter presses `Z` |
+
+Match features to the request: a lecture or workshop benefits from steps, a quiz and a live demo; a pitch from one strong chart and a QR code on the last slide. Don't put features on every slide. Everything prints and exports in its final state (all steps shown).
+
 ### Video, audio and embeds
 
 - `<video src="clip.mp4">`, `<audio src="song.mp3">`, YouTube / Vimeo `<iframe>`s all work. deck-kit **never autoplays** (it removes `autoplay`), gives every `<video>`/`<audio>` the browser controls (play, seek, volume, **mute**), and **stops and rewinds** a slide's media when you leave it — coming back shows it unplayed. YouTube iframes get `enablejsapi=1` automatically so they can be paused. Presenter previews stay muted.
@@ -356,7 +376,7 @@ Run `npm install` once in the repo root (installs `puppeteer-core`; it uses the 
 | `node scripts/apply-changes.mjs <deck.html> notes.json\|edits.json` | Merge notes (presenter view) or visual edits (`E`) saved in browsers without direct file access (Firefox, Safari); only the affected tags change. `apply-notes.mjs` is an alias |
 | `node scripts/pptx-to-deck.mjs talk.pptx --theme=<slug>` | Import a PowerPoint: titles, bullets (levels), tables, pictures and speaker notes → `source/talk.md` + a deck in md-to-deck layouts with the theme's look; hidden slides skipped unless `--include-hidden`; charts, SmartArt and video/audio are reported, not imported |
 | `node scripts/deploy.mjs <deck.html> --to=vercel\|cloudflare\|github` | Publish one self-contained file (never `CLAUDE.md` or other files) to a link named after the deck folder (`--name=…`). `--preview` publishes a separate link without touching the main one; `--dry-run` shows the commands. Vercel/Cloudflare need a one-time `npx vercel login` / `npx wrangler login`; GitHub uses `gh` and a `<you>/slides` repo with one folder per deck. Publishing is public — run it only when the user asks. **Speaker notes are left out** of the published copy unless `--keep-notes` (anyone with the link could read them), and the published copy hides `E`, `K` and `X`. **Overwrite guard:** re-deploying the same deck updates its link; if a *different* deck already uses that name it stops with exit code 2 — ask the user whether to replace it (`--force`) or pick another `--name` |
-| `node scripts/bundle.mjs <deck.html> [--all-subsets] [--external-media]` | One self-contained offline `.html` with fonts embedded; `--external-media` keeps video/audio as files next to it; warns past common hosting limits |
+| `node scripts/bundle.mjs <deck.html> [--all-subsets] [--external-media]` | One self-contained offline `.html` with fonts embedded (and KaTeX / the QR library when the deck uses maths or `data-qr`); `--external-media` keeps video/audio as files next to it; warns past common hosting limits |
 | `node scripts/sync-runtime.mjs [--check]` | Copy `runtime/` into every template (edit runtime files only in `runtime/`) |
 | `npm test` | Runtime-copy check + headless test of all templates and the demo (also runs in GitHub Actions) |
 

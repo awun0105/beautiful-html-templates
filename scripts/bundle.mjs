@@ -7,6 +7,10 @@
  * Usage:
  *   node scripts/bundle.mjs <deck.html> [out.html] [--subsets=latin,latin-ext,vietnamese | --all-subsets] [--external-media]
  *
+ * Maths ($…$, KaTeX) and QR codes (data-qr) normally load their library
+ * from a CDN; when the deck uses them, the library is embedded too
+ * (KaTeX with its woff2 fonts). --no-libs skips that.
+ *
  * --external-media  copy video / audio files next to the output (media/…)
  *                   instead of inlining them: base64 makes them ~33% bigger
  *                   and hosts limit single-file size (deploy.mjs uses this)
@@ -22,6 +26,7 @@
 
 import { readFileSync, writeFileSync, existsSync, statSync, copyFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname, extname, basename } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
 const flags = Object.fromEntries(args.filter((a) => a.startsWith('--')).map((a) => {
@@ -111,12 +116,13 @@ for (const tag of links) {
   if (!href) continue;
   try {
     if (/fonts\.googleapis\.com/.test(href)) {
-      html = html.replace(tag, `<style data-bundled="google-fonts">\n${await inlineGoogleFonts(href.replace(/&amp;/g, '&'))}</style>`);
+      const css = await inlineGoogleFonts(href.replace(/&amp;/g, '&'));
+      html = html.replace(tag, () => `<style data-bundled="google-fonts">\n${css}</style>`);
       stats.styles++;
     } else if (isInlineable(href)) {
       const f = localFile(href, baseDir);
       if (!f) continue;
-      html = html.replace(tag, `<style data-bundled="${basename(f)}">\n${inlineCssUrls(readFileSync(f, 'utf8'), dirname(f))}\n</style>`);
+      html = html.replace(tag, () => `<style data-bundled="${basename(f)}">\n${inlineCssUrls(readFileSync(f, 'utf8'), dirname(f))}\n</style>`);
       stats.styles++;
     }
   } catch (e) {
@@ -133,6 +139,45 @@ html = html.replace(/<script\b([^>]*)\bsrc=["']([^"']+)["']([^>]*)><\/script>/gi
   const code = readFileSync(f, 'utf8').replace(/<\/script/gi, '<\\/script');
   return `<script${pre}${post} data-bundled="${basename(f)}">\n${code}\n</script>`;
 });
+
+// Libraries deck-kit would fetch from a CDN (same URLs as the runtime).
+if (!flags['no-libs']) {
+  const runtime = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../runtime/deck-kit.js'), 'utf8');
+  const url = (re) => (runtime.match(re) || [])[0];
+  const body = html.replace(/<script\b[\s\S]*?<\/script>|<style\b[\s\S]*?<\/style>|<aside class="notes"[\s\S]*?<\/aside>/gi, '');
+  const usesMath = !/<meta[^>]+name=["']deck-kit-math["'][^>]+content=["']off/i.test(html) &&
+    /\$\$[\s\S]+?\$\$|\\\(|\\\[|\$(?=[^\s$])[^$<]*?[^\s\\]\$(?!\d)/.test(body.replace(/<(pre|code)\b[\s\S]*?<\/\1>/gi, ''));
+  const usesQr = /\sdata-qr[\s=>]/.test(body);
+  const add = [];
+  try {
+    if (usesMath && !/data-dk-lib=["']katex/.test(html)) {
+      const js = url(/https:\/\/cdn\.jsdelivr\.net\/npm\/katex@[\d.]+\/dist\/katex\.min\.js/);
+      const cssUrl = js.replace(/\.js$/, '.css');
+      let css = await (await fetchBuf(cssUrl)).text();
+      // Keep only the woff2 file of each font (every browser that runs deck-kit reads woff2).
+      css = css.replace(/src:\s*url\(([^)]+\.woff2)\)\s*format\(["']woff2["']\)[^;}]*/g, 'src:url($1) format("woff2")');
+      const fonts = [...new Set([...css.matchAll(/url\((fonts\/[^)]+\.woff2)\)/g)].map((m) => m[1]))];
+      for (const f of fonts) {
+        const buf = Buffer.from(await (await fetchBuf(new URL(f, cssUrl).href)).arrayBuffer());
+        css = css.split(`url(${f})`).join(`url(data:font/woff2;base64,${buf.toString('base64')})`);
+        stats.fonts++;
+      }
+      const code = (await (await fetchBuf(js)).text()).replace(/<\/script/gi, '<\\/script');
+      add.push(`<style data-dk-lib="katex">\n${css}\n</style>`, `<script data-dk-lib="katex">\n${code}\n</script>`);
+      stats.scripts++;
+    }
+    if (usesQr && !/data-dk-lib=["']qr/.test(html)) {
+      const js = url(/https:\/\/cdn\.jsdelivr\.net\/npm\/qrcode-generator@[\d.]+\/qrcode\.js/);
+      const code = (await (await fetchBuf(js)).text()).replace(/<\/script/gi, '<\\/script');
+      add.push(`<script data-dk-lib="qr">\n${code}\n</script>`);
+      stats.scripts++;
+    }
+  } catch (e) {
+    console.warn(`warning: could not embed the maths / QR library (${e.message}) — the deck will load it online`);
+  }
+  // A function, not a string: the library code contains $' and $&, which a replacement string would expand.
+  if (add.length) html = /<\/head>/i.test(html) ? html.replace(/<\/head>/i, () => add.join('\n') + '\n</head>') : add.join('\n') + html;
+}
 
 // Images, video posters and sources.
 const MEDIA_EXT = /\.(mp4|webm|mov|m4v|ogv|mp3|wav|ogg|oga|m4a|aac|flac|opus)$/i;

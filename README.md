@@ -46,7 +46,7 @@ Mở file `index.html` bằng trình duyệt là trình chiếu được. Bấm 
 
 | Phím | Làm gì |
 |---|---|
-| `←` `→` `Space` `1`–`9` | Chuyển slide |
+| `←` `→` `Space` `1`–`9` | Chuyển slide (`→` cũng hiện từng phần của slide nếu có) |
 | `P` | **Màn hình người trình bày** — mở cửa sổ thứ hai có slide hiện tại, slide kế tiếp, ghi chú và đồng hồ. Để cửa sổ này trên laptop, cửa sổ gốc kéo sang máy chiếu (màn hình để chế độ *mở rộng*). Kéo thanh trượt ở cửa sổ nào thì cửa sổ kia đổi theo |
 | `N` | Ghi chú người nói (hiện ngay trên màn hình) |
 | `M` | Menu các slide, có phút dự kiến |
@@ -57,6 +57,7 @@ Mở file `index.html` bằng trình duyệt là trình chiếu được. Bấm 
 | `E` | **Chỉnh sửa** — xem bên dưới |
 | `K` | Chép vị trí một phần tử để gửi cho agent |
 | `X` | Xuất file & chia sẻ |
+| `Z` | Phóng to: kéo khung (hoặc click) vào chỗ muốn phóng; `Z` / `Esc` để thu lại |
 | `F` | Toàn màn hình |
 | `Ctrl+P` | In ra PDF, mỗi slide một trang (biểu đồ hiện đủ) |
 
@@ -64,7 +65,20 @@ Giao diện các bảng là tiếng Việt khi deck viết bằng tiếng Việt
 
 ## Slide tương tác
 
-Mẫu nào cũng chạy được biểu đồ động, thanh trượt, nút "xem đáp án", đồng hồ đếm ngược — hợp cho bài giảng. Agent viết các phần này bằng `DeckKit.widget`, `DeckKit.plot`, `DeckKit.bind`; màu tự lấy theo mẫu. Xem thử: mở [`examples/deck-kit-demo/index.html`](./examples/deck-kit-demo/index.html).
+Mẫu nào cũng chạy được biểu đồ động, thanh trượt, nút "xem đáp án", đồng hồ đếm ngược — hợp cho bài giảng. Ngoài ra, mỗi thứ dưới đây chỉ cần một thuộc tính HTML (màu và font tự theo mẫu):
+
+- **Hiện từng phần** — bấm `→` hiện ý tiếp theo, `←` ẩn lại (`data-step`).
+- **Công thức toán** — gõ `$x^2$` hay `$$…$$` là ra công thức đẹp (KaTeX).
+- **Code** — tô màu cú pháp, bấm `→` để làm nổi từng dòng, có nút chép code.
+- **Câu hỏi trắc nghiệm** — bấm vào đáp án là biết đúng sai, kèm giải thích.
+- **Biểu đồ cột, đường, tròn** — từ một bảng số liệu hoặc vài con số.
+- **Mô phỏng có nút phát / dừng / từng bước**.
+- **Thanh kéo so sánh trước / sau** cho hai tấm ảnh.
+- **Chấm chú thích trên ảnh** — bấm vào số để hiện giải thích.
+- **Mã QR** dẫn tới link bất kỳ.
+- **Phóng to** một vùng khi đang trình chiếu (phím `Z`).
+
+Bạn chỉ cần nói với agent điều mình muốn ("cho câu hỏi trắc nghiệm vào cuối phần 2", "vẽ biểu đồ doanh thu từ bảng này"); agent tra danh sách đầy đủ trong [`widgets-reference.md`](./widgets-reference.md). Bản in và file xuất luôn hiện đủ mọi bước. Xem thử: [`examples/features/index.html`](./examples/features/index.html) và [`examples/deck-kit-demo/index.html`](./examples/deck-kit-demo/index.html).
 
 ## Video, âm thanh và chuyển động
 

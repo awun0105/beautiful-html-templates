@@ -36,9 +36,14 @@
  *   <!-- layout: stats -->        list items "**42%** label" become stat cards
  *   ![](clip.mp4) / ![](song.mp3) video / audio player with controls (never autoplays)
  *   a YouTube link on its own line  embedded player
+ *   $x^2$, $$\sum x$$            maths (KaTeX, rendered by deck-kit)
+ *   ```python {1-2|4}            highlighted code; {…} steps through those lines on →
+ *   ```chart  + JSON              bar / line / pie chart ({"type":"bar","labels":[…],"series":[…]})
+ *   - [x] right / - [ ] wrong     multiple-choice quiz (click an option to check it)
  * Override any slide with <!-- layout: cover|section|bullets|columns|quote|stats|image -->.
- * Other per-slide keys: sec, min, title. Raw HTML lines pass through untouched
- * (embed a <canvas> + <script> with DeckKit.widget for live demos).
+ * Other per-slide keys: sec, min, title, steps (steps: true → list items appear
+ * one per →). Raw HTML lines pass through untouched (data-step, data-compare,
+ * data-hotspot, data-qr… and <canvas> + <script> with DeckKit.widget).
  */
 
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync, readdirSync } from 'node:fs';
@@ -147,9 +152,13 @@ function youtube(line) {
   if (!m) return null;
   return `<div class="embed"><iframe src="https://www.youtube.com/embed/${m[1]}?rel=0${m[2] ? `&start=${m[2]}` : ''}" title="YouTube video" allow="fullscreen; picture-in-picture; encrypted-media" allowfullscreen></iframe></div>`;
 }
+/** Maths spans in a line ($…$ by Pandoc's rule, $$…$$, \(…\), \[…\]) — kept
+ *  away from emphasis so a_1 or a*b inside maths stays as written. */
+const MATH_RE = /\$\$[\s\S]+?\$\$|\\\([\s\S]+?\\\)|\\\[[\s\S]+?\\\]|\$(?=[^\s$])(?:\\.|[^$\\])*?[^\s\\]\$(?!\d)|\$[^\s$\d]\$(?!\d)/g;
 function inline(s) {
   const codes = [];
   s = s.replace(/`([^`]+)`/g, (m, c) => { codes.push(`<code>${esc(c)}</code>`); return `\u0000${codes.length - 1}\u0000`; });
+  s = s.replace(MATH_RE, (m) => { codes.push(esc(m)); return `\u0000${codes.length - 1}\u0000`; });
   s = esc(s)
     .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (m, alt, u) => media(asset(u.replace(/&amp;/g, '&')), alt))
     .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2">$1</a>')
@@ -165,11 +174,20 @@ function blocks(lines) {
     const l = lines[i];
     if (!l.trim()) { i++; continue; }
     if (/^```/.test(l)) {
-      const langTag = l.slice(3).trim();
+      // ```lang {1-2|4}: the braces step through those lines.
+      const info = l.slice(3).trim();
+      const lines_ = (info.match(/\{([^}]*)\}/) || [])[1];
+      const langTag = info.replace(/\{[^}]*\}/, '').trim().split(/\s+/)[0] || '';
       const body = [];
       for (i++; i < lines.length && !/^```/.test(lines[i]); i++) body.push(lines[i]);
       i++;
-      html.push(`<pre class="code"${langTag ? ` data-lang="${esc(langTag)}"` : ''}><code>${esc(body.join('\n'))}</code></pre>`);
+      if (langTag === 'chart') {
+        let spec = null;
+        try { spec = JSON.parse(body.join('\n')); } catch (e) { console.warn(`warning: \`\`\`chart block is not valid JSON (${e.message})`); }
+        if (spec) { html.push(`<canvas class="chart" data-chart="${esc(JSON.stringify(spec))}"></canvas>`); continue; }
+      }
+      const cls = langTag && langTag !== 'chart' ? ` class="language-${esc(langTag)}"` : '';
+      html.push(`<pre class="code"${lines_ ? ` data-lines="${esc(lines_.trim())}"` : ''}><code${cls}>${esc(body.join('\n'))}</code></pre>`);
       continue;
     }
     if (youtube(l)) { html.push(youtube(l)); i++; continue; }
@@ -206,6 +224,12 @@ function blocks(lines) {
         items.push([depth, inline(lines[i].replace(/^\s*([-*+]|\d+[.)])\s+/, ''))]);
       }
       const tag = ordered ? 'ol' : 'ul';
+      // - [x] right / - [ ] wrong → a quiz.
+      const box = /^\[( |x|X)\]\s/;
+      if (items.length > 1 && items.every(([d, t]) => d === 0 && box.test(t))) {
+        html.push(`<${tag} class="quiz" data-quiz>${items.map(([, t]) => `<li data-option${/^\[[xX]\]/.test(t) ? ' data-correct' : ''}>${t.replace(box, '')}</li>`).join('')}</${tag}>`);
+        continue;
+      }
       let h = `<${tag}>`;
       items.forEach(([d, t], k) => {
         const next = items[k + 1];
@@ -296,6 +320,8 @@ function renderSlide(s) {
     default:
       inner = `${H ? `<h2>${H}</h2>` : ''}<div class="content">${blocks(body)}</div>`;
   }
+  // steps: true → every list item appears on its own → press.
+  if (/^(true|yes|1|on)$/i.test(s.meta.steps || '')) inner = inner.replace(/<(ul|ol)>/g, '<$1 data-steps>');
   const attrs = [`class="slide layout-${s.layout}"`, `data-title="${esc(s.title)}"`];
   if (s.meta.sec) attrs.push(`data-sec="${esc(s.meta.sec)}"`);
   if (s.meta.min) attrs.push(`data-min="${esc(s.meta.min)}"`);
@@ -378,6 +404,9 @@ ${fontLink}
   audio { width: min(900px, 100%); }
   .embed { position: relative; width: min(1400px, 100%); aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #000; }
   .embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  canvas.chart { width: 100%; height: 600px; }
+  .quiz { list-style: none; padding: 0; gap: 16px; }
+  .quiz li { background: var(--card); border: 2px solid var(--line); border-radius: 14px; padding: 16px 28px; }
 </style>
 </head>
 <body>

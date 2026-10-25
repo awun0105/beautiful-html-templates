@@ -46,7 +46,7 @@ Open `index.html` in a browser and present. Press `?` for every shortcut.
 
 | Key | Does |
 |---|---|
-| `←` `→` `Space` `1`–`9` | Navigate |
+| `←` `→` `Space` `1`–`9` | Navigate (`→` also reveals a slide's steps) |
 | `P` | **Presenter view** — a second window with the current and next slide, notes and timer. Keep it on the laptop and the original window on the projector (displays in *extend* mode). Sliders move on both screens |
 | `N` | Speaker notes (on this screen) |
 | `M` | Slide menu with planned minutes |
@@ -57,6 +57,7 @@ Open `index.html` in a browser and present. Press `?` for every shortcut.
 | `E` | **Edit mode** — see below |
 | `K` | Copy an element's location for your agent |
 | `X` | Export & share |
+| `Z` | Zoom: drag a box (or click) to magnify that spot; `Z` / `Esc` zooms out |
 | `F` | Fullscreen |
 | `Ctrl+P` | Print to PDF, one slide per page (charts included) |
 
@@ -64,7 +65,20 @@ Panels are in Vietnamese when the deck is Vietnamese or your browser prefers Vie
 
 ## Interactive slides
 
-Every template runs live charts, sliders, "show answer" buttons and countdowns — great for teaching. The agent writes them with `DeckKit.widget`, `DeckKit.plot` and `DeckKit.bind`, in the template's colours. Try [`examples/deck-kit-demo/index.html`](./examples/deck-kit-demo/index.html).
+Every template runs live charts, sliders, "show answer" buttons and countdowns — great for teaching. On top of that, each of these is one HTML attribute (in the template's colours and fonts):
+
+- **Step-by-step reveals** — `→` shows the next point, `←` hides it (`data-step`).
+- **Maths** — type `$x^2$` or `$$…$$` (KaTeX).
+- **Code** — syntax colours, `→` highlights line by line, a copy button.
+- **Multiple-choice quizzes** — click an answer to see right or wrong, with an explanation.
+- **Bar, line and pie charts** — from a table or a few numbers.
+- **Simulations with play / pause / step controls**.
+- **Before / after slider** for two images.
+- **Hotspots on a picture** — click a number to see its note.
+- **QR codes** to any link.
+- **Zoom** into part of a slide while presenting (`Z`).
+
+Just tell the agent what you want ("add a quiz at the end of part 2", "chart revenue from this table"); it looks everything up in [`widgets-reference.md`](./widgets-reference.md). Prints and exports always show every step. Try [`examples/features/index.html`](./examples/features/index.html) and [`examples/deck-kit-demo/index.html`](./examples/deck-kit-demo/index.html).
 
 ## Video, audio and motion
 

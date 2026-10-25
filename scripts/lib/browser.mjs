@@ -55,10 +55,11 @@ export async function openDeck(browser, file, { width = 1920, height = 1080, has
   return page;
 }
 
-/** Go to slide i, wait for it to land, then until its content stops changing
- *  (entry animations, count-ups), waiting at least `settle` ms. */
+/** Go to slide i with all its steps shown, wait for it to land, then until its
+ *  content stops changing (entry animations, count-ups), waiting at least `settle` ms. */
 export async function showSlide(page, i, settle = 450) {
-  await page.evaluate((i) => DeckKit.goTo(i), i);
+  // Captures and checks see every step (data-step) of a slide.
+  await page.evaluate((i) => { if (DeckKit.steps && !DeckKit.steps.allOn) DeckKit.steps.all(true); DeckKit.goTo(i); }, i);
   await page.waitForFunction((i) => DeckKit.index === i, { timeout: 5000 }, i).catch(() => {});
   await page.evaluate((i, min) => DeckKit.settle(i, { min }), i, settle);
 }

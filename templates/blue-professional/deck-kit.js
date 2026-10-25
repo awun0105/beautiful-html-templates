@@ -79,10 +79,12 @@
       stale: 'The deck file changed on disk after you opened it (the agent may have edited it). Reload the page and save again — your changes are kept as a draft.',
       editPartial: 'Saved {n} change(s) to {f}; {m} element(s) were created by the template\'s script and are not in the file, so they could not be saved',
       keepNotes: 'Include speaker notes',
+      step: 'step', copy: 'Copy', copiedCode: 'Copied', play: 'Play', pause: 'Pause', stepNext: 'Next step', resetT: 'Back to start',
+      compare: 'Before / after slider', zoomHint: 'Drag a box (or click) to zoom in — Z or Esc to zoom out',
       shareNote: 'Exports and deploys run with Node on your computer; deploying makes the deck public.',
-      keys: [['← → 1–9', 'Navigate'], ['P', 'Presenter view (2nd window)'], ['N', 'Speaker notes'], ['M', 'Slide menu'],
+      keys: [['← → 1–9', 'Navigate (→ also reveals the next step)'], ['P', 'Presenter view (2nd window)'], ['N', 'Speaker notes'], ['M', 'Slide menu'],
         ['T', 'Talk timer (Shift+T reset)'], ['B / W', 'Black / white screen'], ['L', 'Laser pointer'],
-        ['D', 'Draw (C clear, Backspace undo)'], ['E', 'Edit mode (E again saves)'], ['K', 'Copy an element\'s location for your agent'], ['X', 'Export & share (PDF, PPTX, deploy)'], ['F', 'Fullscreen'], ['Ctrl+P', 'Print every slide'], ['Esc', 'Close panels'], ['?', 'This help']],
+        ['D', 'Draw (C clear, Backspace undo)'], ['E', 'Edit mode (E again saves)'], ['K', 'Copy an element\'s location for your agent'], ['X', 'Export & share (PDF, PPTX, deploy)'], ['Z', 'Zoom into part of the slide'], ['F', 'Fullscreen'], ['Ctrl+P', 'Print every slide'], ['Esc', 'Close panels'], ['?', 'This help']],
     },
     vi: {
       notes: 'Ghi chú người nói', noNotes: 'Slide này không có ghi chú.', next: 'Tiếp theo', end: 'Hết bài',
@@ -111,10 +113,12 @@
       stale: 'File deck đã thay đổi trên ổ đĩa sau khi bạn mở (có thể agent vừa sửa). Hãy tải lại trang rồi lưu lại — thay đổi của bạn vẫn được giữ làm bản nháp.',
       editPartial: 'Đã lưu {n} thay đổi vào {f}; {m} phần tử do script của mẫu tự tạo nên không có trong file, không lưu được',
       keepNotes: 'Kèm ghi chú người nói',
+      step: 'bước', copy: 'Chép', copiedCode: 'Đã chép', play: 'Phát', pause: 'Tạm dừng', stepNext: 'Bước tiếp', resetT: 'Về đầu',
+      compare: 'Thanh kéo so sánh trước / sau', zoomHint: 'Kéo khung (hoặc click) để phóng to — Z hoặc Esc để thu nhỏ',
       shareNote: 'Xuất file và deploy chạy bằng Node trên máy bạn; deploy sẽ công khai deck.',
-      keys: [['← → 1–9', 'Chuyển slide'], ['P', 'Màn hình người trình bày (cửa sổ 2)'], ['N', 'Ghi chú người nói'], ['M', 'Menu các slide'],
+      keys: [['← → 1–9', 'Chuyển slide (→ cũng hiện bước tiếp theo)'], ['P', 'Màn hình người trình bày (cửa sổ 2)'], ['N', 'Ghi chú người nói'], ['M', 'Menu các slide'],
         ['T', 'Đồng hồ (Shift+T đặt lại)'], ['B / W', 'Màn hình đen / trắng'], ['L', 'Con trỏ laser'],
-        ['D', 'Vẽ lên slide (C xoá, Backspace hoàn tác)'], ['E', 'Chỉnh sửa (E lần nữa để lưu)'], ['K', 'Chép vị trí phần tử cho agent'], ['X', 'Xuất & chia sẻ (PDF, PPTX, deploy)'], ['F', 'Toàn màn hình'], ['Ctrl+P', 'In mọi slide'], ['Esc', 'Đóng bảng'], ['?', 'Bảng này']],
+        ['D', 'Vẽ lên slide (C xoá, Backspace hoàn tác)'], ['E', 'Chỉnh sửa (E lần nữa để lưu)'], ['K', 'Chép vị trí phần tử cho agent'], ['X', 'Xuất & chia sẻ (PDF, PPTX, deploy)'], ['Z', 'Phóng to một vùng của slide'], ['F', 'Toàn màn hình'], ['Ctrl+P', 'In mọi slide'], ['Esc', 'Đóng bảng'], ['?', 'Bảng này']],
     },
   };
   // Panel language: Vietnamese when the deck is in Vietnamese or the
@@ -153,8 +157,80 @@
     html.dk-laser, html.dk-laser * { cursor: none !important; }
     html.dk-pick, html.dk-pick * { cursor: crosshair !important; }
     html.dk-editing [contenteditable] { outline: none; cursor: text; }
+    /* steps */
+    :where([data-step], [data-steps] > *) { transition: opacity .35s ease, visibility 0s; }
+    .dk-step-off { opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; transition: opacity .2s ease, visibility 0s linear .2s; }
+    /* math */
+    .dk-math[data-display] { display: block; text-align: center; margin: .45em 0; }
+    /* code */
+    :where(pre.dk-code) { position: relative; }
+    .dk-code .dk-tk-kw { color: var(--dk-c-kw); } .dk-code .dk-tk-str { color: var(--dk-c-str); }
+    .dk-code .dk-tk-num { color: var(--dk-c-num); } .dk-code .dk-tk-fn { color: var(--dk-c-fn); }
+    .dk-code .dk-tk-com { color: var(--dk-c-com); font-style: italic; } .dk-code .dk-tk-attr { color: var(--dk-c-attr); }
+    .dk-ln { transition: opacity .3s ease; } .dk-ln.dk-dim { opacity: .28; }
+    .dk-copy { position: absolute; top: .5em; right: .5em; z-index: 1; font: 600 max(12px, .45em)/1 system-ui, sans-serif; padding: .45em .8em;
+      border: 0; border-radius: 6px; background: rgba(127,127,127,.22); color: inherit; cursor: pointer; opacity: 0; transition: opacity .2s; }
+    pre:hover > .dk-copy, .dk-copy:focus-visible { opacity: 1; }
+    @media (hover: none) { .dk-copy { opacity: .75; } }
+    /* quiz */
+    .dk-opt { cursor: pointer; transition: opacity .2s, box-shadow .2s, background-color .2s; }
+    .dk-quiz.dk-answered .dk-opt:not(.dk-right):not(.dk-wrong) { opacity: .5; }
+    .dk-opt.dk-right { box-shadow: inset 0 0 0 3px var(--dk-right, #16a34a); background-color: color-mix(in srgb, var(--dk-right, #16a34a) 14%, transparent); }
+    .dk-opt.dk-wrong { box-shadow: inset 0 0 0 3px var(--dk-wrong, #dc2626); background-color: color-mix(in srgb, var(--dk-wrong, #dc2626) 12%, transparent); }
+    .dk-opt.dk-right::after { content: " ✓"; color: var(--dk-right, #16a34a); font-weight: 700; }
+    .dk-opt.dk-wrong::after { content: " ✗"; color: var(--dk-wrong, #dc2626); font-weight: 700; }
+    .dk-quiz:not(.dk-answered) [data-explain] { display: none; }
+    /* charts */
+    :where(canvas[data-chart], canvas.dk-chart) { display: block; width: 100%; aspect-ratio: 16 / 9; }
+    .dk-chart-box { width: 100%; } .dk-chart-box[style*="height"] canvas { height: 100%; aspect-ratio: auto; }
+    .dk-chart-src { position: absolute !important; left: 0 !important; top: 0 !important; transform: scale(0) !important; transform-origin: 0 0 !important;
+      opacity: 0 !important; pointer-events: none !important; }   /* tables can't shrink below their content; scale it away, keep it for screen readers */
+    /* stepper */
+    .dk-stepper { display: flex; gap: .4em; align-items: center; margin-top: .5em; font: 600 max(14px, .5em)/1 system-ui, sans-serif; }
+    .dk-stepper button { font: inherit; min-width: 2.6em; padding: .5em .7em; border: 1.5px solid currentColor; border-radius: 6px;
+      background: transparent; color: inherit; cursor: pointer; opacity: .85; }
+    .dk-stepper button:hover { opacity: 1; } .dk-stepper button:disabled { opacity: .35; cursor: default; }
+    .dk-stepper-n { margin-left: .4em; font-variant-numeric: tabular-nums; opacity: .7; }
+    .dk-frame-off { display: none !important; }
+    /* before / after */
+    :where(.dk-cmp) { position: relative; display: grid; overflow: hidden; }
+    .dk-cmp > .dk-cmp-before, .dk-cmp > .dk-cmp-after { grid-area: 1 / 1; width: 100%; height: 100%; object-fit: cover; }
+    .dk-cmp > .dk-cmp-after { clip-path: inset(0 0 0 var(--dk-cmp, 50%)); }
+    .dk-cmp-range { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; z-index: 2; }
+    .dk-cmp-handle { position: absolute; top: 0; bottom: 0; left: var(--dk-cmp, 50%); width: 3px; margin-left: -1.5px; background: #fff;
+      box-shadow: 0 0 0 1px rgba(0,0,0,.25); pointer-events: none; z-index: 1; }
+    .dk-cmp-handle::after { content: "↔"; position: absolute; top: 50%; left: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px;
+      border-radius: 50%; background: #fff; color: #111; display: grid; place-items: center; font: 700 20px/1 system-ui, sans-serif;
+      box-shadow: 0 2px 10px rgba(0,0,0,.3); }
+    .dk-cmp-range:focus-visible ~ .dk-cmp-handle::after { outline: 3px solid #3B82F6; }
+    .dk-cmp-label { position: absolute; top: .6em; z-index: 1; padding: .2em .6em; border-radius: 4px; background: rgba(0,0,0,.55); color: #fff;
+      font: 600 max(13px, .5em)/1.2 system-ui, sans-serif; pointer-events: none; }
+    .dk-cmp-l { left: .6em; } .dk-cmp-r { right: .6em; }
+    /* hotspots */
+    :where(.dk-hs) { position: relative; }
+    .dk-hs-dot { position: absolute; left: var(--dk-x); top: var(--dk-y); z-index: 2; width: 2em; height: 2em; margin: -1em 0 0 -1em; padding: 0;
+      border-radius: 50%; border: 2px solid var(--dk-hs-fg, #fff); background: var(--dk-hs-bg, #2563EB); color: var(--dk-hs-fg, #fff);
+      font: 700 max(13px, .5em)/1 system-ui, sans-serif; display: grid; place-items: center; cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,.3); animation: dk-pulse 2.4s ease-out infinite; }
+    .dk-hs-dot[aria-expanded="true"] { animation: none; outline: 3px solid var(--dk-hs-bg, #2563EB); outline-offset: 2px; }
+    @keyframes dk-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--dk-hs-bg, #2563EB) 55%, transparent); } 70%, 100% { box-shadow: 0 0 0 .7em transparent; } }
+    .dk-hs-tip { position: absolute; left: var(--dk-x); top: var(--dk-y); z-index: 3; width: max-content; max-width: min(45%, 24em); margin: 0;
+      transform: translate(1.4em, -50%); padding: .55em .85em; border-radius: 8px; background: var(--dk-tip-bg, #fff); color: var(--dk-tip-fg, #111);
+      box-shadow: 0 6px 24px rgba(0,0,0,.28); transition: opacity .2s, visibility 0s; }
+    .dk-hs-tip.dk-hs-left { transform: translate(calc(-100% - 1.4em), -50%); }
+    .dk-hs-tip:not(.dk-open) { opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s, visibility 0s linear .2s; }
+    /* QR */
+    :where([data-qr]) { display: inline-block; width: 8em; aspect-ratio: 1; }
+    [data-qr] > svg.dk-qr { display: block; width: 100%; height: 100%; }
+    .dk-qr-fallback { font: .5em/1.3 ui-monospace, monospace; word-break: break-all; }
+    @media (prefers-reduced-motion: reduce) {
+      :where([data-step], [data-steps] > *), .dk-step-off, .dk-ln, .dk-hs-tip { transition: none !important; }
+      .dk-hs-dot { animation: none; }
+    }
     @media print {
       * { transition: none !important; }
+      .dk-copy, .dk-stepper, .dk-cmp-range { display: none !important; }
+      .dk-hs-dot { animation: none !important; }
       #deck-kit { display: none !important; }
       .dk-print-src { display: none !important; }
       .dk-print-img { display: block !important; }
@@ -221,6 +297,9 @@
       background: radial-gradient(circle, #fff 0 18%, #ff2a2a 30% 55%, rgba(255,42,42,0) 72%); pointer-events: none; display: none;
       box-shadow: 0 0 14px 6px rgba(255,42,42,.45); }
     .dk-laser.dk-show { display: block; }
+    .dk-zl { position: fixed; inset: 0; z-index: 2147483130; display: none; cursor: zoom-in; touch-action: none; }
+    .dk-zl.dk-show { display: block; }
+    .dk-zb { position: fixed; display: none; border: 2px dashed #3B82F6; background: rgba(59,130,246,.12); pointer-events: none; }
     /* export & share */
     .dk-share .dk-row { padding: 12px 0; }
     .dk-share .dk-opts { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
@@ -361,12 +440,15 @@
 
   /** Jump to slide i. Some templates ignore input during their transition,
    *  so the loop retries until the deck lands there (or 1.5 s pass). */
-  function goto(i) {
+  function goto(i, steps = 0) {
     if (!slides.length) return;
     i = Math.max(0, Math.min(slides.length - 1, i));
     if (ROLE === 'presenter') { send(window.opener, { dk: 'go', index: i }); return; }
+    // Steps revealed on arrival: none for a jump, all when stepping back into a slide.
+    const back = { slide: stepState.slide, n: stepState.n };
+    setSteps(i, steps);
     const now = performance.now();
-    pending = { i, until: now + 1500, next: now + 150 };
+    pending = { i, until: now + 1500, next: now + 150, back: pending ? pending.back : back };
     adapter.go(i);
   }
   /** Relative move that stacks while a jump is still landing. */
@@ -385,7 +467,7 @@
     let txt = '';
     if (h) {
       // <br> has no text; turn it into a space so "two<br>lines" reads right.
-      const c = h.cloneNode(true);
+      const c = sourceClone(h);
       c.querySelectorAll('br').forEach((b) => b.replaceWith(' '));
       txt = c.textContent.replace(/\s+/g, ' ').trim();
     }
@@ -462,8 +544,11 @@
     selbox.querySelectorAll('.dk-h').forEach((h) => { const [x, y, c] = HPOS[h.dataset.dir]; h.style.left = x + '%'; h.style.top = y + '%'; h.style.cursor = c + '-resize'; });
     const ink = el('canvas', 'dk-ink');
     const laser = el('div', 'dk-laser');
+    const zoomLayer = el('div', 'dk-zl');
+    const zoomBox = el('div', 'dk-zb');
+    zoomLayer.appendChild(zoomBox);
     if (plan.has && ROLE === 'main') root.appendChild(progress);
-    root.append(ink, hov, selbox, notes, menu, tmr, help, toast, blankEl, laser, edbar, share);
+    root.append(ink, zoomLayer, hov, selbox, notes, menu, tmr, help, toast, blankEl, laser, edbar, share);
     document.body.appendChild(host);
 
     tmr.addEventListener('click', () => timerCmd('pause'));
@@ -471,7 +556,7 @@
     // own handlers (several decks navigate on any click or wheel).
     ['click', 'mousedown', 'pointerdown', 'touchstart', 'touchend', 'wheel'].forEach((t) =>
       host.addEventListener(t, (e) => e.stopPropagation(), { passive: true }));
-    ui = { host, root, progress, notes, menu, tmr, help, toast, blankEl, ink, laser, edbar, hov, selbox, share };
+    ui = { host, root, progress, notes, menu, tmr, help, toast, blankEl, ink, laser, edbar, hov, selbox, share, zoomLayer, zoomBox };
     setupShare();
     buildMenu();
   }
@@ -910,11 +995,13 @@
       const a = document.getElementById(b.getAttribute('data-reveal'));
       return a ? { id: b.getAttribute('data-reveal'), hidden: a.hidden } : null;
     }).filter(Boolean);
-    return { dk: 'sync', slide: i, controls: controlsOf(s).map((el) => ({ value: el.value, checked: el.checked })), reveals };
+    const acts = actorsOn(s).map((a) => ({ kind: a.kind, n: actorsOn(s, a.kind).indexOf(a), v: a.state() }));
+    return { dk: 'sync', slide: i, controls: controlsOf(s).map((el) => ({ value: el.value, checked: el.checked })), reveals, acts };
   }
   function applySync(m) {
     m.controls.forEach((c, n) => applyControl({ slide: m.slide, n, value: c.value, checked: c.checked }));
     m.reveals.forEach(applyReveal);
+    (m.acts || []).forEach((a) => applyAct(Object.assign({ slide: m.slide }, a)));
   }
   /** Main window: send the current and next slide's control state to the presenter. */
   function sendSync() {
@@ -987,7 +1074,7 @@
   // ── Presenter view ───────────────────────────────────────────────────────
   const baseUrl = () => location.href.replace(/[?#].*$/, '');
   function send(win, msg) { try { if (win && !win.closed) win.postMessage(msg, '*'); } catch (e) {} }
-  function stateMsg() { return { dk: 'state', index: cur, total: slides.length, timer, blank }; }
+  function stateMsg() { return { dk: 'state', index: cur, total: slides.length, timer, blank, steps: stepInfo() }; }
   function broadcast() { if (ROLE === 'main' && presenterWin && !presenterWin.closed) send(presenterWin, stateMsg()); }
 
   function openPresenter() {
@@ -998,6 +1085,7 @@
   }
 
   let pv = null;
+  let pvSteps = null;   // presenter: { n, total } steps shown on the audience screen
   function buildPresenter() {
     const root = ui.root;
     const box = el('div', 'dk-pv', `
@@ -1040,8 +1128,8 @@
     renderNoteStatus();
     box.querySelector('.dk-bar').addEventListener('click', (e) => {
       const a = e.target.closest('button') && e.target.closest('button').dataset.a;
-      if (a === 'prev') step(-1);
-      if (a === 'next') step(1);
+      if (a === 'prev') advance(-1);
+      if (a === 'next') advance(1);
       if (a === 'black') send(window.opener, { dk: 'key', key: 'b' });
       if (a === 'reset') timerCmd('reset');
     });
@@ -1072,13 +1160,21 @@
     pv.title.textContent = `${cur + 1}. ${titleOf(s, cur)}`;
     pv.notes.innerHTML = editing ? (slides[cur] ? notesOf(slides[cur], cur) : '') : notesHtml(cur);
     pv.meta.textContent = metaText(cur) ? '· ' + metaText(cur) : '';
-    pv.pos.textContent = `${cur + 1} / ${slides.length}`;
-    send(pv.fc.contentWindow, { dk: 'go', index: cur });
-    const end = cur + 1 >= slides.length;
-    pv.nxFrame.classList.toggle('dk-end', end);
-    if (!end) send(pv.fn.contentWindow, { dk: 'go', index: cur + 1 });
+    renderPreviews();
     lastTimerText = '';
     renderTimer();
+  }
+  /** Position, step counter and the two previews (notes untouched: they may be mid-edit). */
+  function renderPreviews() {
+    if (!pv || cur < 0) return;
+    const si = pvSteps || { n: 0, total: 0 };
+    pv.pos.textContent = `${cur + 1} / ${slides.length}` + (si.total ? ` · ${L.step} ${si.n}/${si.total}` : '');
+    send(pv.fc.contentWindow, { dk: 'go', index: cur, steps: si.n });
+    // "Next" previews the next step while the slide still has some.
+    const more = si.n < si.total;
+    const end = !more && cur + 1 >= slides.length;
+    pv.nxFrame.classList.toggle('dk-end', end);
+    if (!end) send(pv.fn.contentWindow, more ? { dk: 'go', index: cur, steps: si.n + 1 } : { dk: 'go', index: cur + 1, steps: 0 });
   }
 
   function onMessage(e) {
@@ -1091,6 +1187,8 @@
       if (m.dk === 'hello') { broadcast(); sendSync(); }
       if (m.dk === 'want-sync') sendSync();
       if (m.dk === 'go') goto(m.index);
+      if (m.dk === 'nav') advance(m.d);
+      if (m.dk === 'act') applyAct(m);
       if (m.dk === 'timer') timerCmd(m.cmd);
       if (m.dk === 'key') handleKey(m.key, m.shift);
       if (m.dk === 'control') applyControl(m);
@@ -1102,7 +1200,11 @@
       const fromPreview = pv && (e.source === pv.fc.contentWindow || e.source === pv.fn.contentWindow);
       if (fromPreview) {
         // Interaction inside a preview: forward to the audience screen.
-        if (m.dk === 'control' || m.dk === 'reveal') send(window.opener, m);
+        if (m.dk === 'control' || m.dk === 'reveal' || m.dk === 'act') {
+          send(window.opener, m);
+          // Both previews may show this slide (the next one a step further).
+          send((e.source === pv.fc.contentWindow ? pv.fn : pv.fc).contentWindow, m);
+        }
         if (m.dk === 'key' && !handleKey(m.key, m.shift)) navKey(m.key, m.shift);
         return;
       }
@@ -1112,20 +1214,25 @@
         pv.msg.textContent = '';
         pv.heard();
         timer = m.timer;
-        if (m.index !== cur) { cur = m.index; renderPresenter(); }
+        const st = m.steps || { n: 0, total: 0 };
+        if (m.index !== cur) { cur = m.index; pvSteps = st; renderPresenter(); }
+        else if (!pvSteps || st.n !== pvSteps.n || st.total !== pvSteps.total) { pvSteps = st; renderPreviews(); }
         lastTimerText = '';
         renderTimer();
       }
-      if (m.dk === 'sync' || m.dk === 'control' || m.dk === 'reveal') {
-        const target = m.slide === cur ? pv.fc : m.slide === cur + 1 ? pv.fn : m.dk === 'reveal' ? pv.fc : null;
-        if (target) send(target.contentWindow, m);
+      if (m.dk === 'sync' || m.dk === 'control' || m.dk === 'reveal' || m.dk === 'act') {
+        // The "next" preview may show this same slide (one step further).
+        const nextShows = pvSteps && pvSteps.n < pvSteps.total ? cur : cur + 1;
+        if (m.slide === cur || m.dk === 'reveal') send(pv.fc.contentWindow, m);
+        if (m.slide === nextShows) send(pv.fn.contentWindow, m);
       }
     } else if (ROLE === 'mirror') {
       if (e.source !== window.parent) return;
-      if (m.dk === 'go') { pinned = m.index; goto(m.index); }
+      if (m.dk === 'go') { pinned = m.index; goto(m.index, m.steps || 0); }
       if (m.dk === 'sync') applySync(m);
       if (m.dk === 'control') applyControl(m);
       if (m.dk === 'reveal') applyReveal(m);
+      if (m.dk === 'act') applyAct(m);
     }
   }
 
@@ -1367,10 +1474,10 @@
   }
   const pathOf = (node, slide) => {
     const p = [];
-    for (let e = node; e && e !== slide; e = e.parentElement) p.unshift(Array.prototype.indexOf.call(e.parentElement.children, e));
+    for (let e = node; e && e !== slide; e = e.parentElement) p.unshift(realChildren(e.parentElement).indexOf(e));
     return p;
   };
-  const byPath = (slide, path) => path.reduce((e, k) => (e ? e.children[k] : null), slide);
+  const byPath = (slide, path) => path.reduce((e, k) => (e ? realChildren(e)[k] : null), slide);
   const normText = (t) => (t || '').replace(/\s+/g, ' ').trim();
   function sourceIndex(src, count = slides.length) {
     const ranges = slideRanges(src);
@@ -1453,20 +1560,25 @@
   const EDRAFT = 'deck-kit-edits:' + location.pathname;
   const round = (v, d = 0) => +v.toFixed(d);
   const isMedia = (e) => /^(img|canvas|svg|video|picture|iframe|object|embed)$/i.test(e.tagName);
-  const isTextual = (e) => !isMedia(e) && !!normText(e.textContent) && !e.querySelector('img, canvas, svg, video');
+  const isTextual = (e) => {
+    if (isMedia(e) || e.querySelector('canvas, img, video, iframe, .dk-stepper, .dk-chart-box, .dk-hs-dot, .dk-cmp-range, .dk-qr')) return false;
+    if (Array.from(e.querySelectorAll('svg')).some((v) => !v.closest('.katex'))) return false;
+    return !!normText(srcText(e));
+  };
   const slideOf = (node) => slides.find((x) => x.contains(node)) || null;
-  const editable = (node) => node && node.nodeType === 1 && slides[cur] && slides[cur] !== node && slides[cur].contains(node) && !node.closest('aside.notes');
+  const editable = (node) => node && node.nodeType === 1 && slides[cur] && slides[cur] !== node && slides[cur].contains(node) && !node.closest('aside.notes') && !node.closest('[data-dk-gen]');
 
-  function snapshot(e) { const o = {}; TRACK.forEach((p) => { o[p] = e.style.getPropertyValue(p); }); o.html = e.innerHTML; return o; }
+  // HTML is kept in source form (what the author wrote), never the rendered maths / highlighting.
+  function snapshot(e) { const o = {}; TRACK.forEach((p) => { o[p] = e.style.getPropertyValue(p); }); o.html = sourceHtml(e); return o; }
   function restoreSnap(e, snap) {
     TRACK.forEach((p) => (snap[p] ? e.style.setProperty(p, snap[p]) : e.style.removeProperty(p)));
     if (!e.getAttribute('style')) e.removeAttribute('style');
-    if (e.innerHTML !== snap.html) e.innerHTML = snap.html;
+    if (sourceHtml(e) !== snap.html) { e.innerHTML = snap.html; enhance(e); applySteps(slides[cur], stepState.n); }
   }
   function touch(e) {
     if (ed.touched.has(e)) return ed.touched.get(e);
     const s = slideOf(e);
-    const info = { slide: slides.indexOf(s), path: pathOf(e, s), tag: e.tagName.toLowerCase(), text: e.textContent, orig: snapshot(e), htmlEdited: false };
+    const info = { slide: slides.indexOf(s), path: pathOf(e, s), tag: e.tagName.toLowerCase(), text: srcText(e), orig: snapshot(e), htmlEdited: false };
     ed.touched.set(e, info);
     return info;
   }
@@ -1498,7 +1610,7 @@
       const info = touch(e);
       info.text = item.text;
       Object.entries(item.style || {}).forEach(([p, v]) => (v ? e.style.setProperty(p, v) : e.style.removeProperty(p)));
-      if (item.html != null) { e.innerHTML = item.html; info.htmlEdited = true; }
+      if (item.html != null) { e.innerHTML = item.html; enhance(e); info.htmlEdited = true; }
       n++;
     });
     return n;
@@ -1530,6 +1642,10 @@
     ['menu', 'help', 'notes'].forEach((p) => show(p, false));
     if (ink.on) setDraw(false);
     if (laserOn) setLaser(false);
+    unzoom(true);
+    // Hidden steps must be reachable while editing.
+    ed.hadAllSteps = stepsAll;
+    showAllSteps(true);
     ed.on = true;
     document.documentElement.classList.add('dk-editing');
     show('edbar', true);
@@ -1542,12 +1658,13 @@
     ed.on = false;
     document.documentElement.classList.remove('dk-editing');
     show('edbar', false);
+    showAllSteps(!!ed.hadAllSteps);
     const edits = pendingEdits();
     if (!edits.length) return;
     try {
       let skipped = [];
       const name = await writeDeck((src) => { const r = patchEditsReport(src, edits); skipped = r.skipped; return r.out; });
-      ed.touched.forEach((info, e) => { info.orig = snapshot(e); info.htmlEdited = false; info.text = e.textContent; });
+      ed.touched.forEach((info, e) => { info.orig = snapshot(e); info.htmlEdited = false; info.text = srcText(e); });
       ed.undo = []; ed.redo = [];
       try { localStorage.removeItem(EDRAFT); } catch (x) {}
       flash(skipped.length ? fmt(L.editPartial, { n: edits.length - skipped.length, f: name, m: skipped.length })
@@ -1564,6 +1681,8 @@
     const info = touch(e);
     info.htmlEdited = true;
     ed.typing = { e, before: snapshot(e) };
+    // Type into the source: $x^2$ rather than the rendered maths.
+    unrender(e);
     try { e.contentEditable = e.firstElementChild ? 'true' : 'plaintext-only'; } catch (x) { e.contentEditable = 'true'; }
     ui.selbox.classList.add('dk-typing');
     e.focus();
@@ -1580,6 +1699,7 @@
     t.e.removeAttribute('contenteditable');
     ui.selbox.classList.remove('dk-typing');
     ed.typing = null;
+    enhance(t.e);
     commit(t.e, t.before);
   }
   const translateOf = (e) => {
@@ -1648,7 +1768,8 @@
   }
   /** Click (without dragging) on the selection: select the child under the pointer. */
   function drill(ev) {
-    const under = document.elementsFromPoint(ev.clientX, ev.clientY).find((n) => n !== ed.sel && ed.sel.contains(n) && n !== ui.host);
+    // Rendered maths / highlighted code count as their author element.
+    const under = document.elementsFromPoint(ev.clientX, ev.clientY).map(liftGen).find((n) => n && n !== ed.sel && ed.sel.contains(n) && n !== ui.host && editable(n));
     if (under) select(under);
   }
   function undoRedo(redo) {
@@ -1768,7 +1889,7 @@
       return;
     }
     const path = ev.composedPath();
-    const target = path[0];
+    const target = path.includes(ui.host) ? path[0] : liftGen(path[0]);
     if (path.includes(ui.host)) {
       if (ev.type !== 'pointerdown' || !ed.on) return;
       const h = target.closest && target.closest('.dk-h');
@@ -1803,7 +1924,7 @@
   function onEditDblClick(ev) {
     if (!ed.on || !ed.sel) return;
     const path = ev.composedPath();
-    if (path.includes(ui.host) || editable(path[0])) { ev.preventDefault(); ev.stopPropagation(); startTyping(ed.sel); }
+    if (path.includes(ui.host) || editable(liftGen(path[0]))) { ev.preventDefault(); ev.stopPropagation(); startTyping(ed.sel); }
   }
 
   // ── Export & share (X) ───────────────────────────────────────────────────
@@ -1937,6 +2058,10 @@
   function onChange(i, prev) {
     if (prev >= 0 && slides[prev]) widgetsOn(slides[prev]).forEach((w) => call(w, 'leave'));
     if (prev >= 0 && prev !== i) stopMedia(slides[prev]);
+    if (zoom.on || zoom.picking) unzoom(true);
+    // Arrived without deck-kit (the template's own click / swipe): forward
+    // shows no steps yet, backward shows them all.
+    if (stepState.slide !== i) setSteps(i, prev >= 0 && i < prev ? Infinity : 0);
     cur = i;
     const s = slides[i];
     widgetsOn(s).forEach((w) => { call(w, 'enter'); call(w, 'draw'); });
@@ -1959,12 +2084,18 @@
     if (ROLE !== 'presenter') {
       const i = adapter.index();
       if (pending) {
-        if (i === pending.i || now > pending.until) pending = null;
+        if (i === pending.i) pending = null;
+        else if (now > pending.until) {
+          // The template never got there: the step state goes back to the slide on screen.
+          const b = pending.back;
+          pending = null;
+          if (i >= 0 && stepState.slide !== i) setSteps(i, b.slide === i ? b.n : Infinity);
+        }
         else if (now >= pending.next) { pending.next = now + 150; adapter.go(pending.i); }
       }
       if (i !== cur && i >= 0 && i < slides.length) onChange(i, cur);
       // A preview follows the audience screen only; undo moves the template made on its own.
-      if (ROLE === 'mirror' && pinned != null && !pending && i !== pinned) goto(pinned);
+      if (ROLE === 'mirror' && pinned != null && !pending && i !== pinned) goto(pinned, stepState.slide === pinned ? stepState.n : 0);
       if (cur >= 0) widgetsOn(slides[cur]).forEach((w) => call(w, 'tick', dt));
       cdTick(dt);
     }
@@ -1999,6 +2130,7 @@
       case 't': if (ROLE === 'main') { show('tmr'); renderTimer(); } break;
       case 'T': timerCmd('reset'); flash(L.elapsed + ' 0:00'); break;
       case 'f': case 'F': toggleFullscreen(); break;
+      case 'z': case 'Z': if (ROLE !== 'main' || ed.on) return false; startZoom(); break;
       case 'b': case 'B': case '.': setBlank('black'); broadcast(); break;
       case 'w': case 'W': setBlank('white'); broadcast(); break;
       case 'l': case 'L': setLaser(); break;
@@ -2008,6 +2140,7 @@
       case '?': show('help'); break;
       case 'Escape':
         if (picking) stopPick();
+        if (zoom.on || zoom.picking) unzoom();
         ['menu', 'help', 'notes', 'share'].forEach((p) => show(p, false));
         if (ink.on) setDraw(false);
         if (laserOn) setLaser(false);
@@ -2059,7 +2192,8 @@
 
     // Navigation: <deck-stage> keeps its own handler in the main window;
     // everywhere else deck-kit drives it so presses queue instead of dropping.
-    if (adapter.ownsKeys && ROLE === 'main') return;
+    // (deck-kit still takes the keys that reveal or hide a step.)
+    if (adapter.ownsKeys && ROLE === 'main' && !stepKey(e.key)) return;
     if (navKey(e.key, e.shiftKey)) { e.preventDefault(); e.stopImmediatePropagation(); }
   }
 
@@ -2073,7 +2207,7 @@
     else if (/^[0-9]$/.test(key)) abs = key === '0' ? 9 : +key - 1;
     else if ((key === 'r' || key === 'R') && !shift) abs = 0;
     if (d === null && abs === null) return false;
-    if (d !== null) step(d); else if (abs < slides.length) goto(abs);
+    if (d !== null) advance(d); else if (abs < slides.length) goto(abs);
     return true;
   }
 
@@ -2104,7 +2238,7 @@
     // deck-stage has its own tap zones; scroll-based decks keep native scrolling.
     if (adapter.nativeScroll) return;
     let x0 = null, y0 = null;
-    const skip = 'input, button, select, textarea, a, canvas, label, [data-noswipe], #deck-kit';
+    const skip = 'input, button, select, textarea, a, canvas, label, [data-noswipe], [data-compare], [data-hotspots], .dk-hs, .dk-opt, #deck-kit';
     // Capture phase + stopPropagation: the template's own swipe code would
     // otherwise move a second time.
     const own = adapter.mode !== 'deck-stage';
@@ -2119,8 +2253,8 @@
       const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
       x0 = null;
       if (own) e.stopPropagation();
-      if (Math.abs(dx) > 50 && Math.abs(dx) > 1.5 * Math.abs(dy)) step(dx < 0 ? 1 : -1);
-      else if (own && Math.abs(dy) > 60 && Math.abs(dy) > 1.5 * Math.abs(dx)) step(dy < 0 ? 1 : -1);
+      if (Math.abs(dx) > 50 && Math.abs(dx) > 1.5 * Math.abs(dy)) advance(dx < 0 ? 1 : -1);
+      else if (own && Math.abs(dy) > 60 && Math.abs(dy) > 1.5 * Math.abs(dx)) advance(dy < 0 ? 1 : -1);
     }, { passive: true, capture: true });
 
     if (matchMedia('(orientation: portrait) and (max-width: 700px)').matches) {
@@ -2167,7 +2301,7 @@
       if (!target || !(s === target || s.contains(target)) || an.playState !== 'running') return false;
       return isFinite(an.effect.getComputedTiming().endTime);
     });
-    while ((same < 2 || running()) && performance.now() - t0 < max) {
+    while ((same < 2 || running() || busy > 0) && performance.now() - t0 < max) {
       await sleep(150);
       const now = sig();
       same = now === prev ? same + 1 : 0;
@@ -2179,11 +2313,11 @@
    *  counters) fill in their content, ending on the slide we started from. */
   async function visitAll({ settle, progress } = {}) {
     const wait = settle != null ? settle : adapter.mode === 'deck-stage' ? 150 : 450;
-    const home = cur;
+    const home = cur, homeSteps = stepState.slide === cur ? stepState.n : 0;
     const order = slides.map((_, i) => i).filter((i) => i !== home).concat([home]);
     for (let k = 0; k < order.length; k++) {
       const i = order[k];
-      goto(i);
+      goto(i, i === home ? homeSteps : 0);
       const until = performance.now() + 2500;
       while (adapter.index() !== i && performance.now() < until) await sleep(50);
       const extra = parseFloat(slides[i].getAttribute('data-print-delay'));
@@ -2197,6 +2331,11 @@
   function preparePrint() {
     if (printUndo) return;
     const undo = [];
+    unzoom(true);
+    // Printed pages show every step.
+    const hadAll = stepsAll;
+    showAllSteps(true);
+    undo.push(() => showAllSteps(hadAll));
     if (adapter.mode !== 'deck-stage') {
       // Show every slide, flatten the containers that stack or slide them.
       const activeCls = slides.some((s) => s.classList.contains('is-active')) ? 'is-active' : 'active';
@@ -2264,6 +2403,980 @@
     if (cur >= 0) widgetsOn(slides[cur]).forEach((w) => call(w, 'draw'));
   }
 
+  // ── Interactive features ─────────────────────────────────────────────────
+  // Steps (data-step), math ($…$), code (highlighting, data-lines, copy),
+  // quizzes, charts, steppers, before/after sliders, hotspots, QR codes.
+  // Everything deck-kit adds inside a slide carries data-dk-gen (or a dk-
+  // class / --dk- custom property / data-dk- attribute), and sourceClone()
+  // strips it again, so edit mode saves only what the author wrote.
+  const isGen = (e) => !!e && e.nodeType === 1 && e.hasAttribute('data-dk-gen');
+  const realChildren = (e) => Array.prototype.filter.call(e.children, (c) => !isGen(c));
+  /** Nearest ancestor-or-self that is the author's own element. */
+  const liftGen = (n) => {
+    let g;
+    while (n && n.nodeType === 1 && n.closest && (g = n.closest('[data-dk-gen]'))) n = g.parentElement;
+    // Token and line spans of highlighted code belong to the <code> element.
+    const hl = n && n.nodeType === 1 && n.closest && n.closest('[data-dk-hl]');
+    return hl || n;
+  };
+  /** Mark attributes deck-kit added to an author's element, so they are not saved. */
+  function addAttr(e, name, value) {
+    if (e.hasAttribute(name)) return;
+    e.setAttribute(name, value);
+    const list = (e.getAttribute('data-dk-attrs') || '').split(' ').filter(Boolean);
+    list.push(name);
+    e.setAttribute('data-dk-attrs', list.join(' '));
+  }
+  /** A copy of `node` as the author wrote it: generated nodes removed, math
+   *  and highlighted code turned back into text, deck-kit classes, attributes
+   *  and custom properties dropped. */
+  function sourceClone(node) {
+    const c = node.cloneNode(true);
+    const all = () => [c, ...c.querySelectorAll('*')];
+    c.querySelectorAll('[data-dk-gen="math"]').forEach((m) => m.replaceWith(document.createTextNode(m.getAttribute('data-dk-src') || '')));
+    c.querySelectorAll('[data-dk-gen]').forEach((g) => g.remove());
+    all().forEach((x) => { if (x.hasAttribute('data-dk-hl')) x.textContent = x.textContent; });
+    all().forEach((x) => {
+      (x.getAttribute('data-dk-attrs') || '').split(' ').filter(Boolean).forEach((a) => x.removeAttribute(a));
+      Array.from(x.attributes).forEach((a) => { if (a.name.startsWith('data-dk-')) x.removeAttribute(a.name); });
+      if (x.classList.length) {
+        Array.from(x.classList).forEach((k) => { if (k.startsWith('dk-')) x.classList.remove(k); });
+        if (!x.classList.length) x.removeAttribute('class');
+      }
+      if (x.style && x.style.length) {
+        Array.from(x.style).forEach((p) => { if (p.startsWith('--dk-')) x.style.removeProperty(p); });
+        if (!x.getAttribute('style').trim()) x.removeAttribute('style');
+      }
+    });
+    return c;
+  }
+  const sourceHtml = (node) => sourceClone(node).innerHTML;
+  const srcText = (node) => sourceClone(node).textContent;
+  /** Turn rendered maths and highlighted code inside `node` back into plain
+   *  text in place (for typing); other descendants and their listeners stay. */
+  function unrender(node) {
+    node.querySelectorAll('[data-dk-gen="math"]').forEach((m) => m.replaceWith(document.createTextNode(m.getAttribute('data-dk-src') || '')));
+    [node, ...node.querySelectorAll('[data-dk-hl]')].forEach((c) => { if (c.hasAttribute('data-dk-hl')) { c.textContent = c.textContent; c.removeAttribute('data-dk-hl'); } });
+    node.querySelectorAll('.dk-copy[data-dk-gen]').forEach((b) => b.remove());
+    node.normalize();
+  }
+
+  /** Stop the template's own click / swipe handlers (many decks advance on
+   *  any click) from seeing interaction with deck-kit controls. */
+  function guard(node, sel) {
+    ['click', 'mousedown', 'pointerdown', 'touchstart', 'touchend', 'wheel'].forEach((t) =>
+      node.addEventListener(t, (e) => {
+        // Only the deck-kit control itself (sel), so [data-reveal] / [data-countdown]
+        // inside the box still reach the document.
+        const c = sel && e.target.closest && e.target.closest(sel);
+        if (!sel || (c && node.contains(c))) e.stopPropagation();
+      }, { passive: true }));
+  }
+  const reducedMotion = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  // Work the deck must finish before it counts as settled (library loads, chart
+  // animations); settleSlide() and printing wait for it.
+  let busy = 0;
+  function track(p) { busy++; let done = false; const end = () => { if (!done) { done = true; busy--; } }; p.then(end, end); return p; }
+
+  // Libraries load on first use from a CDN unless already on the page
+  // (bundle.mjs inlines them for offline decks).
+  const LIBS = {
+    katex: { test: () => window.katex, js: 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js', css: 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css' },
+    qr: { test: () => window.qrcode, js: 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js' },
+  };
+  const libLoads = {};
+  function loadLib(name) {
+    const lib = LIBS[name];
+    if (lib.test()) return Promise.resolve();
+    if (libLoads[name]) return libLoads[name];
+    if (lib.css && !document.querySelector('link[data-dk-lib="' + name + '"], style[data-dk-lib="' + name + '"]')) {
+      const l = el('link'); l.rel = 'stylesheet'; l.href = lib.css; l.setAttribute('data-dk-lib', name);
+      document.head.appendChild(l);
+    }
+    libLoads[name] = new Promise((res, rej) => {
+      const s = el('script'); s.src = lib.js; s.async = true; s.setAttribute('data-dk-lib', name);
+      s.onload = () => (lib.test() ? res() : rej(new Error(name + ' did not load')));
+      s.onerror = () => rej(new Error('could not load ' + lib.js + ' (offline? bundle the deck with scripts/bundle.mjs)'));
+      document.head.appendChild(s);
+    });
+    libLoads[name].catch((e) => console.warn('[deck-kit]', e.message));
+    return libLoads[name];
+  }
+
+  // Shared state for clickable things that both screens show (quizzes,
+  // hotspots, steppers): addressed by slide + kind + order on the slide.
+  // (Their slide is looked up on use: DeckKit.stepper() may run before init.)
+  const actors = [];   // { kind, el, state(), apply(v) }
+  function addActor(kind, node, state, apply) {
+    const a = { kind, el: node, state, apply };
+    actors.push(a);
+    return a;
+  }
+  const actorsOn = (s, kind) => actors.filter((a) => (!kind || a.kind === kind) && a.el.isConnected && s.contains(a.el));
+  function sendAct(a) {
+    const s = slideOf(a.el);
+    const n = s ? actorsOn(s, a.kind).indexOf(a) : -1;
+    if (n >= 0) route({ dk: 'act', slide: slides.indexOf(s), kind: a.kind, n, v: a.state() });
+  }
+  function applyAct(m) {
+    const a = slides[m.slide] && actorsOn(slides[m.slide], m.kind)[m.n];
+    if (!a || JSON.stringify(a.state()) === JSON.stringify(m.v)) return;
+    applyingRemote = true;
+    try { a.apply(m.v); } finally { applyingRemote = false; }
+  }
+
+  // ── Steps: reveal parts of a slide one at a time ─────────────────────────
+  // [data-step] elements appear one per → press, in page order; data-step="2"
+  // puts an element in step 2 (same number → together). Children of
+  // [data-steps] each count as a step. pre[data-lines="1-2|4"] adds one step
+  // per segment, highlighting those lines. ← hides the last step; entering a
+  // slide backwards shows all its steps.
+  const stepState = { slide: -1, n: 0 };
+  let stepsAll = false;   // print, export and edit mode: everything visible
+  function parseLines(spec) {
+    return String(spec || '').split('|').map((seg) => {
+      seg = seg.trim();
+      if (!seg || seg === '*' || seg === 'all') return null;
+      const set = new Set();
+      seg.split(',').forEach((r) => {
+        const m = r.trim().match(/^(\d+)(?:\s*-\s*(\d+))?$/);
+        if (!m) return;
+        const a = +m[1], b = m[2] ? +m[2] : a;
+        for (let k = Math.min(a, b); k <= Math.max(a, b) && k - Math.min(a, b) < 5000; k++) set.add(k);
+      });
+      return set.size ? set : null;   // nothing readable → no dimming
+    });
+  }
+  function stepGroups(s) {
+    if (!s) return [];
+    const units = [];
+    let auto = 0;
+    s.querySelectorAll('[data-step], [data-steps] > *, pre[data-lines]').forEach((e) => {
+      if (isGen(e) || e.closest('aside.notes, [data-dk-gen]')) return;
+      if (e.hasAttribute('data-step')) {
+        const v = parseFloat(e.getAttribute('data-step'));
+        units.push({ key: isFinite(v) ? v : ++auto, el: e });
+      } else if (e.parentElement && e.parentElement.hasAttribute('data-steps') && !e.matches('pre[data-lines]')) {
+        units.push({ key: ++auto, el: e });
+      }
+      if (e.matches('pre[data-lines]')) parseLines(e.getAttribute('data-lines')).forEach((set, seg) => units.push({ key: ++auto, pre: e, seg, set }));
+    });
+    const keys = [...new Set(units.map((u) => u.key))].sort((a, b) => a - b);
+    return keys.map((k) => units.filter((u) => u.key === k));
+  }
+  function applySteps(s, n) {
+    const groups = stepGroups(s);
+    const lines = new Map();
+    groups.forEach((g, k) => {
+      const on = stepsAll || k < n;
+      g.forEach((u) => {
+        if (u.el) u.el.classList.toggle('dk-step-off', !on);
+        else {
+          if (!lines.has(u.pre)) lines.set(u.pre, null);
+          if (on && !stepsAll) lines.set(u.pre, u.set);
+        }
+      });
+    });
+    lines.forEach((set, pre) => pre.querySelectorAll('.dk-ln').forEach((ln, k) => ln.classList.toggle('dk-dim', !!set && !set.has(k + 1))));
+    return groups.length;
+  }
+  function setSteps(i, n) {
+    const s = slides[i];
+    if (!s) return;
+    const total = stepGroups(s).length;
+    stepState.slide = i;
+    stepState.n = Math.max(0, Math.min(total, n));
+    applySteps(s, stepState.n);
+    if (i === cur) broadcast();
+  }
+  const stepInfo = () => ({ n: stepState.slide === cur ? stepState.n : 0, total: cur >= 0 ? stepGroups(slides[cur]).length : 0 });
+  function showAllSteps(on) {
+    stepsAll = !!on;
+    slides.forEach((s, i) => applySteps(s, i === stepState.slide ? stepState.n : 0));
+  }
+  /** → / ← : reveal or hide a step, or change slide. */
+  function advance(d) {
+    if (ROLE === 'presenter') { send(window.opener, { dk: 'nav', d }); return; }
+    const t = pending ? pending.i : cur;
+    if (t < 0) return;
+    const total = stepsAll ? 0 : stepGroups(slides[t]).length;
+    const n = stepState.slide === t ? stepState.n : 0;
+    if (d > 0 && n < total) { setSteps(t, n + 1); return; }
+    if (d < 0 && n > 0 && total) { setSteps(t, n - 1); return; }
+    const to = t + d;
+    if (to < 0 || to >= slides.length) return;
+    goto(to, d < 0 ? Infinity : 0);
+  }
+  /** Would this key change the steps on the current slide (rather than the slide)? */
+  function stepKey(key) {
+    const d = /^(ArrowRight|ArrowDown|PageDown| |Spacebar)$/.test(key) ? 1 : /^(ArrowLeft|ArrowUp|PageUp)$/.test(key) ? -1 : 0;
+    if (!d || stepsAll || cur < 0) return false;
+    const { n, total } = stepInfo();
+    return d > 0 ? n < total : n > 0;
+  }
+
+  // ── Math: $…$, $$…$$, \(…\), \[…\] rendered with KaTeX ───────────────────
+  // Inline $…$ follows Pandoc's rule so prices don't turn into maths: no
+  // space after the opening $, none before the closing $, and no digit right
+  // after it ("$5 and $10" stays text). \$ is a literal dollar sign.
+  const MATH_SKIP = 'pre, code, kbd, samp, script, style, textarea, svg, math, .katex, aside.notes, [data-no-math], [data-dk-gen], [contenteditable]';
+  function findMath(t) {
+    const out = [];
+    for (let i = 0; i < t.length; i++) {
+      const c = t[i];
+      if (c === '\\' && t[i + 1] === '$') { out.push({ start: i, end: i + 2, literal: true }); i++; continue; }
+      if (c === '\\' && (t[i + 1] === '(' || t[i + 1] === '[')) {
+        const close = t[i + 1] === '(' ? '\\)' : '\\]';
+        const j = t.indexOf(close, i + 2);
+        if (j > i + 2) { out.push({ start: i, end: j + 2, tex: t.slice(i + 2, j), display: t[i + 1] === '[' }); i = j + 1; }
+        continue;
+      }
+      if (c !== '$') continue;
+      if (t[i + 1] === '$') {
+        const j = t.indexOf('$$', i + 2);
+        if (j > i + 2 && t.slice(i + 2, j).trim()) { out.push({ start: i, end: j + 2, tex: t.slice(i + 2, j), display: true }); i = j + 1; }
+        else i++;
+        continue;
+      }
+      if (!t[i + 1] || /\s/.test(t[i + 1])) continue;
+      let j = i + 1;
+      while ((j = t.indexOf('$', j)) > 0 && t[j - 1] === '\\') j++;
+      if (j < 0 || /\s/.test(t[j - 1]) || /\d/.test(t[j + 1] || '') || t[j + 1] === '$') continue;
+      out.push({ start: i, end: j + 1, tex: t.slice(i + 1, j), display: false });
+      i = j;
+    }
+    return out;
+  }
+  function scanMath(root) {
+    if (document.querySelector('meta[name="deck-kit-math"][content="off"]')) return [];
+    const spans = [];
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: (n) => (/[$\\]/.test(n.data) && n.parentElement && !n.parentElement.closest(MATH_SKIP) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT),
+    });
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach((node) => {
+      const t = node.data, found = findMath(t);
+      if (!found.length || !found.some((f) => !f.literal)) return;
+      const frag = document.createDocumentFragment();
+      let at = 0;
+      found.forEach((f) => {
+        if (f.start > at) frag.appendChild(document.createTextNode(t.slice(at, f.start)));
+        const sp = el('span', 'dk-math');
+        sp.setAttribute('data-dk-gen', 'math');
+        sp.setAttribute('data-dk-src', t.slice(f.start, f.end));
+        if (f.literal) sp.textContent = '$';
+        else {
+          sp.textContent = t.slice(f.start, f.end);
+          sp.setAttribute('data-tex', f.tex);
+          if (f.display) sp.setAttribute('data-display', '');
+          spans.push(sp);
+        }
+        frag.appendChild(sp);
+        at = f.end;
+      });
+      if (at < t.length) frag.appendChild(document.createTextNode(t.slice(at)));
+      node.replaceWith(frag);
+    });
+    return spans;
+  }
+  function renderMath(spans) {
+    if (!spans.length) return;
+    track(loadLib('katex').then(() => spans.forEach((sp) => {
+      if (!sp.isConnected && !sp.parentNode) return;
+      try { window.katex.render(sp.getAttribute('data-tex'), sp, { displayMode: sp.hasAttribute('data-display'), throwOnError: false }); }
+      catch (e) { sp.title = e.message; }
+    }))).catch(() => {});
+  }
+
+  // ── Code: highlighting, data-lines, copy button ──────────────────────────
+  // <pre><code class="language-js">…</code></pre> is highlighted with the
+  // template's own accent colours (only plain-text code: hand-written markup
+  // inside <code> is left alone). Highlighted blocks, and <pre data-copy>,
+  // get a Copy button that shows on hover.
+  const KW = 'abstract and as assert async await break case catch class const continue def default defer del delete do elif else enum except export extends false final finally fn for from func function go if impl import in instanceof interface is lambda let loop match mod mut new nil none not null or package pass private protected pub public raise return self static struct super switch this throw throws trait true try type typeof use var void while with yield None True False int float double char bool boolean string long unsigned auto echo fi then done esac local where select insert update into values join on group order by having create table';
+  const HASH_LANGS = /^(py|python|sh|bash|shell|zsh|console|rb|ruby|r|yaml|yml|toml|perl|pl|ps1|powershell|make|makefile|dockerfile|ini|conf|nix|julia|jl|elixir|ex|exs|coffee|tcl|cmake)$/;
+  const PLAIN_LANGS = /^(none|text|plain|plaintext|txt|output|log)$/;
+  function codeLang(code) {
+    const m = (code.className || '').match(/\b(?:language|lang)-([\w+#-]+)/i) || [null, code.parentElement && code.parentElement.getAttribute('data-lang')];
+    return (m[1] || '').toLowerCase();
+  }
+  function tokenize(text, lang) {
+    const rules = [];
+    if (!lang || PLAIN_LANGS.test(lang)) return [['', text]];
+    if (/^(html|xml|svg|vue|xhtml)$/.test(lang)) {
+      rules.push(['com', /<!--[\s\S]*?-->/], ['kw', /<\/?[A-Za-z][\w:.-]*|\/?>/], ['str', /"[^"]*"|'[^']*'/], ['attr', /[\w:.-]+(?==)/]);
+    } else if (/^(css|scss|less)$/.test(lang)) {
+      rules.push(['com', /\/\*[\s\S]*?\*\//], ['str', /"[^"\n]*"|'[^'\n]*'/], ['attr', /[\w-]+(?=\s*:[^;{}]*[;}])/], ['num', /#[\da-fA-F]{3,8}\b|-?\b\d+(?:\.\d+)?(?:px|em|rem|%|vh|vw|s|ms|deg|fr)?/], ['kw', /@[\w-]+|!important/]);
+    } else {
+      const hash = HASH_LANGS.test(lang), dash = /^(sql|lua|hs|haskell|ada)$/.test(lang);
+      rules.push(['com', hash ? /#.*/ : dash ? /--.*/ : /\/\/.*|\/\*[\s\S]*?\*\//]);
+      if (/^(py|python)$/.test(lang)) rules.push(['str', /"""[\s\S]*?"""|'''[\s\S]*?'''/]);
+      rules.push(['str', /"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\[\s\S]|[^`\\])*`/]);
+      rules.push(['num', /\b(?:0[xX][\da-fA-F]+|\d[\d_]*(?:\.\d+)?(?:[eE][+-]?\d+)?)\b/]);
+      rules.push(['kw', new RegExp('\\b(?:' + KW.split(' ').join('|') + ')\\b', lang === 'sql' ? 'i' : '')]);
+      rules.push(['fn', /\b[A-Za-z_$][\w$]*(?=\s*\()/]);
+    }
+    const re = new RegExp(rules.map(([, r]) => '(' + r.source + ')').join('|'), 'g' + (rules.some(([, r]) => r.flags.includes('i')) ? 'i' : ''));
+    const out = [];
+    let at = 0, m;
+    while ((m = re.exec(text))) {
+      if (!m[0]) { re.lastIndex++; continue; }
+      if (m.index > at) out.push(['', text.slice(at, m.index)]);
+      const g = m.slice(1).findIndex((x) => x !== undefined);
+      out.push([rules[g][0], m[0]]);
+      at = m.index + m[0].length;
+    }
+    if (at < text.length) out.push(['', text.slice(at)]);
+    return out;
+  }
+  /** Highlight (and split into lines for data-lines) one <code> element. */
+  function renderCode(code, pre) {
+    if (code.hasAttribute('data-dk-hl') || code.firstElementChild) return;
+    const lang = codeLang(code);
+    const wantLines = pre.hasAttribute('data-lines');
+    if (!lang && !wantLines) return;
+    const text = code.textContent;
+    const lead = text.match(/^\n?/)[0];   // a newline right after <code> isn't line 1
+    const toks = tokenize(text.slice(lead.length), lang);
+    const lines = [[]];
+    toks.forEach(([cls, s]) => s.split('\n').forEach((part, k) => {
+      if (k) lines.push([]);
+      if (part) lines[lines.length - 1].push(cls ? `<span class="dk-tk-${cls}">${esc(part)}</span>` : esc(part));
+    }));
+    // A trailing newline doesn't start a real last line.
+    const trail = lines.length > 1 && !lines[lines.length - 1].length ? lines.pop() && '\n' : '';
+    const html = lines.map((l, k) => `<span class="dk-ln">${l.join('')}${k < lines.length - 1 ? '\n' : ''}</span>`).join('');
+    code.innerHTML = esc(lead) + html + trail;
+    code.setAttribute('data-dk-hl', lang || 'plain');
+    const pal = palette(pre);
+    const a = pal.accents;
+    [['kw', a[0]], ['str', a[1] || a[0]], ['num', a[2] || a[0]], ['fn', a[3] || a[1] || a[0]], ['com', pal.mute], ['attr', a[1] || a[0]]].forEach(([k, c]) => pre.style.setProperty('--dk-c-' + k, c));
+  }
+  function setupCode(pre) {
+    const code = pre.querySelector(':scope > code') || null;
+    if (code) renderCode(code, pre);
+    else if (pre.hasAttribute('data-lines') && !pre.querySelector('.dk-ln') && !pre.firstElementChild) {
+      // Bare <pre data-lines> without <code>: wrap the lines the same way.
+      const fake = el('code');
+      fake.textContent = pre.textContent;
+      renderCode(fake, pre);
+      pre.innerHTML = fake.innerHTML;
+      pre.setAttribute('data-dk-hl', 'plain');
+    }
+    const wantCopy = pre.getAttribute('data-copy') !== 'false' && (pre.hasAttribute('data-copy') || (code && codeLang(code)));
+    if (wantCopy || pre.hasAttribute('data-dk-hl') || pre.querySelector(':scope > [data-dk-hl]')) pre.classList.add('dk-code');
+    if (wantCopy && !pre.querySelector(':scope > .dk-copy')) {
+      const b = el('button', 'dk-copy', esc(L.copy));
+      b.type = 'button';
+      b.setAttribute('data-dk-gen', '');
+      guard(b);
+      b.addEventListener('click', () => {
+        const t = srcTextOfCode(pre);
+        copyText(t).then((ok) => { if (!ok) return; b.textContent = L.copiedCode; setTimeout(() => { b.textContent = L.copy; }, 1500); });
+      });
+      pre.appendChild(b);
+    }
+  }
+  function srcTextOfCode(pre) {
+    const c = sourceClone(pre);
+    const code = c.querySelector(':scope > code') || c;
+    return code.textContent.replace(/^\n/, '').replace(/\n$/, '');
+  }
+
+  // ── Quiz ─────────────────────────────────────────────────────────────────
+  // <div data-quiz> … <button data-option data-correct>…</button> … <p data-explain>
+  // Without [data-option], the <li>s of the quiz are the options. Clicking an
+  // option marks it right/wrong, shows the right answer and the explanation;
+  // clicking it again clears the answer. Leaving the slide clears it too.
+  const quizOptions = (q) => {
+    const o = Array.from(q.querySelectorAll('[data-option]'));
+    return o.length ? o : Array.from(q.querySelectorAll('li')).filter((li) => !li.closest('[data-explain]'));
+  };
+  function setQuiz(q, i) {
+    q._dkChoice = i;
+    q.classList.toggle('dk-answered', i >= 0);
+    quizOptions(q).forEach((o, k) => {
+      const right = o.hasAttribute('data-correct');
+      o.classList.toggle('dk-right', i >= 0 && right);
+      o.classList.toggle('dk-wrong', k === i && !right);
+      o.classList.toggle('dk-chosen', k === i);
+    });
+  }
+  function setupQuiz(q) {
+    quizOptions(q).forEach((o) => {
+      o.classList.add('dk-opt');
+      if (!/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(o.tagName)) { addAttr(o, 'tabindex', '0'); addAttr(o, 'role', 'button'); }
+    });
+    q.classList.add('dk-quiz');
+    if (q._dkQuiz) { setQuiz(q, q._dkChoice == null ? -1 : q._dkChoice); return; }
+    q._dkQuiz = true;
+    q._dkChoice = -1;
+    const actor = addActor('quiz', q, () => q._dkChoice, (v) => setQuiz(q, v));
+    const choose = (o) => {
+      const i = quizOptions(q).indexOf(o);
+      if (i < 0) return;
+      setQuiz(q, i === q._dkChoice ? -1 : i);
+      sendAct(actor);
+    };
+    guard(q, '.dk-opt');
+    q.addEventListener('click', (e) => { const o = liftGen(e.target).closest && liftGen(e.target).closest('.dk-opt'); if (o && q.contains(o) && !ed.on) choose(o); });
+    q.addEventListener('keydown', (e) => {
+      const o = e.target.closest && e.target.closest('.dk-opt');
+      if (o && e.key === 'Enter' && o.getAttribute('role') === 'button') { e.preventDefault(); e.stopPropagation(); choose(o); }
+    });
+    api.widget(q, { leave: () => { if (q._dkChoice >= 0) setQuiz(q, -1); } });
+  }
+
+  // ── Charts: DeckKit.chart / canvas[data-chart] / table[data-chart] ───────
+  // Bar, line, pie and donut charts in the template's colours, drawn from
+  // data, growing in when the slide opens.
+  const numFmt = (v, spec) => {
+    const d = spec.decimals != null ? spec.decimals : Math.abs(v) >= 100 ? 0 : 2;
+    let s;
+    try { s = new Intl.NumberFormat(document.documentElement.lang || undefined, { maximumFractionDigits: d }).format(v); } catch (e) { s = String(+v.toFixed(d)); }
+    return (spec.prefix || '') + s + (spec.unit || '');
+  };
+  function niceScale(lo, hi, n = 5) {
+    if (!isFinite(lo) || !isFinite(hi)) { lo = 0; hi = 1; }
+    if (lo > hi) [lo, hi] = [hi, lo];
+    if (hi - lo <= Math.abs(hi) * 1e-9 || hi === lo) { const d = Math.abs(hi) * 0.1 || 1; lo -= lo === 0 ? 0 : d; hi += d; }
+    const raw = (hi - lo) / n, mag = 10 ** Math.floor(Math.log10(raw)), m = raw / mag;
+    const st = (m > 5 ? 10 : m > 2 ? 5 : m > 1 ? 2 : 1) * mag;
+    const a = Math.floor(lo / st + 1e-9) * st, b = Math.ceil(hi / st - 1e-9) * st;
+    const ticks = [];
+    for (let k = 0, v = a; v <= b + st / 2 && k < 60; k++, v = a + k * st) ticks.push(+v.toPrecision(12));
+    return { lo: a, hi: b, ticks };
+  }
+  function normChart(spec) {
+    const s = Object.assign({ type: 'bar' }, spec);
+    s.type = String(s.type).toLowerCase();
+    let series = s.series || (s.data ? [{ name: s.name || '', data: s.data }] : []);
+    if (!Array.isArray(series)) series = [series];
+    series = series.map((x) => (Array.isArray(x) ? { name: '', data: x } : x)).map((x) => ({ name: x.name || '', color: x.color, data: (x.data || []).map((v) => (v == null || v === '' ? NaN : +v)) }));
+    const n = Math.max(0, ...series.map((x) => x.data.length));
+    s.labels = (s.labels || []).slice(0, n);
+    while (s.labels.length < n) s.labels.push(String(s.labels.length + 1));
+    s.series = series;
+    return s;
+  }
+  function drawChart(cv, spec, k) {
+    const { ctx, w, h } = fitCanvas(cv);
+    if (!w || !h) return;
+    const s = spec, pal = palette(cv);
+    ctx.clearRect(0, 0, w, h);
+    const font = getComputedStyle(cv).fontFamily || 'sans-serif';
+    const fs = s.fontSize || Math.round(Math.max(12, Math.min(24, h / 20)));
+    ctx.font = `${fs}px ${font}`;
+    ctx.textBaseline = 'middle';
+    const colorOf = (x, j) => x.color || pal.accents[j % pal.accents.length];
+    const series = s.series, labels = s.labels;
+    if (!series.length || !labels.length) return;
+    if (s.type === 'pie' || s.type === 'donut' || s.type === 'doughnut') {
+      const vals = series[0].data.map((v) => (isFinite(v) && v > 0 ? v : 0));
+      const total = vals.reduce((a, b) => a + b, 0);
+      if (!total) return;
+      const legendW = Math.min(w * 0.42, Math.max(...labels.map((l) => ctx.measureText(l).width)) + fs * 5);
+      const r = Math.max(4, Math.min((w - legendW) / 2, h / 2) - fs * 0.6);
+      const cx = (w - legendW) / 2, cy = h / 2;
+      let a0 = -Math.PI / 2;
+      const sweep = Math.PI * 2 * k;
+      vals.forEach((v, j) => {
+        const a = (v / total) * Math.PI * 2;
+        const end = Math.min(a0 + a, -Math.PI / 2 + sweep);
+        if (end > a0) {
+          ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, a0, end); ctx.closePath();
+          ctx.fillStyle = pal.accents[j % pal.accents.length]; ctx.fill();
+          ctx.strokeStyle = pal.bg; ctx.lineWidth = 2; ctx.stroke();
+        }
+        if (k >= 1 && s.values !== false && v / total >= 0.06) {
+          const mid = a0 + a / 2, rr = s.type === 'pie' ? r * 0.62 : r * 0.79;
+          ctx.fillStyle = pal.bg; ctx.textAlign = 'center';
+          ctx.font = `600 ${fs}px ${font}`;
+          ctx.fillText(Math.round(v / total * 100) + '%', cx + Math.cos(mid) * rr, cy + Math.sin(mid) * rr);
+          ctx.font = `${fs}px ${font}`;
+        }
+        a0 += a;
+      });
+      if (s.type !== 'pie') { ctx.globalCompositeOperation = 'destination-out'; ctx.beginPath(); ctx.arc(cx, cy, r * 0.58, 0, Math.PI * 2); ctx.fill(); ctx.globalCompositeOperation = 'source-over'; }
+      const ly = cy - (labels.length * fs * 1.6) / 2 + fs * 0.8;
+      labels.forEach((l, j) => {
+        const y = ly + j * fs * 1.6, x = w - legendW + fs;
+        ctx.fillStyle = pal.accents[j % pal.accents.length]; ctx.fillRect(x, y - fs * 0.4, fs * 0.8, fs * 0.8);
+        ctx.fillStyle = pal.ink; ctx.textAlign = 'left';
+        ctx.fillText(l + (s.values === false ? '' : '  ' + numFmt(vals[j], s)), x + fs * 1.3, y);
+      });
+      return;
+    }
+    // Bar / line: legend on top when there is more than one series.
+    let top = fs * 0.6;
+    if (series.length > 1 || s.legend) {
+      let x = 0;
+      ctx.textAlign = 'left';
+      series.forEach((ser, j) => {
+        ctx.fillStyle = colorOf(ser, j); ctx.fillRect(x, top, fs * 0.8, fs * 0.8);
+        ctx.fillStyle = pal.ink; ctx.fillText(ser.name, x + fs * 1.2, top + fs * 0.4);
+        x += fs * 2.4 + ctx.measureText(ser.name).width;
+      });
+      top += fs * 1.8;
+    }
+    const stacked = !!s.stacked && s.type === 'bar';
+    let vals = [];
+    if (stacked) labels.forEach((_, i) => {
+      let pos = 0, neg = 0;
+      series.forEach((ser) => { const v = ser.data[i]; if (isFinite(v)) { if (v >= 0) pos += v; else neg += v; } });
+      vals.push(pos, neg);
+    });
+    else vals = series.flatMap((ser) => ser.data.filter(isFinite));
+    if (!vals.length) return;
+    const sc = niceScale(s.min != null ? +s.min : Math.min(0, ...vals), s.max != null ? +s.max : Math.max(0, ...vals));
+    let lo = s.min != null ? +s.min : sc.lo, hi = s.max != null ? +s.max : sc.hi;
+    if (!(hi > lo)) { lo = sc.lo; hi = sc.hi; }
+    const ticks = sc.ticks.filter((t) => t >= lo - 1e-9 && t <= hi + 1e-9);
+    const left = Math.max(fs, ...ticks.map((t) => ctx.measureText(numFmt(t, s)).width)) + fs * 0.8;
+    const right = w - fs * 0.4, bottom = h - fs * 1.9, topY = top + (s.values ? fs * 1.2 : fs * 0.4);
+    const Y = (v) => bottom - (Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo || 1) * (bottom - topY);
+    ctx.lineWidth = 1;
+    ticks.forEach((t) => {
+      ctx.strokeStyle = pal.grid; ctx.beginPath(); ctx.moveTo(left, Y(t)); ctx.lineTo(right, Y(t)); ctx.stroke();
+      ctx.fillStyle = pal.mute; ctx.textAlign = 'right'; ctx.fillText(numFmt(t, s), left - fs * 0.4, Y(t));
+    });
+    const slot = (right - left) / labels.length;
+    const X = (i) => left + slot * (i + 0.5);
+    // Category labels; thin them out when they don't fit.
+    const widest = Math.max(...labels.map((l) => ctx.measureText(l).width));
+    const every = Math.max(1, Math.ceil((widest + fs) / slot));
+    ctx.fillStyle = pal.mute; ctx.textAlign = 'center';
+    labels.forEach((l, i) => { if (i % every === 0) ctx.fillText(l, X(i), bottom + fs * 0.95); });
+    const base = Y(Math.max(lo, Math.min(hi, 0)));
+    const ease = 1 - (1 - k) ** 3;
+    if (s.type === 'line' || s.type === 'area') {
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, 0, left + (right - left) * ease, h); ctx.clip();
+      series.forEach((ser, j) => {
+        const col = colorOf(ser, j);
+        const pts = ser.data.map((v, i) => (isFinite(v) ? [X(i), Y(v)] : null));
+        const runs = [[]];
+        pts.forEach((p) => (p ? runs[runs.length - 1].push(p) : runs.push([])));
+        runs.filter((r) => r.length).forEach((run) => {
+          if (s.type === 'area' || s.fill) {
+            ctx.beginPath(); run.forEach(([x, y], q) => (q ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+            ctx.lineTo(run[run.length - 1][0], base); ctx.lineTo(run[0][0], base); ctx.closePath();
+            ctx.globalAlpha = 0.18; ctx.fillStyle = col; ctx.fill(); ctx.globalAlpha = 1;
+          }
+          ctx.beginPath(); run.forEach(([x, y], q) => (q ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+          ctx.strokeStyle = col; ctx.lineWidth = Math.max(2, fs / 6); ctx.lineJoin = 'round'; ctx.stroke();
+          run.forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, Math.max(3, fs / 5), 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill(); });
+        });
+        if (s.values && k >= 1) ser.data.forEach((v, i) => { if (isFinite(v)) { ctx.fillStyle = pal.ink; ctx.textAlign = 'center'; ctx.fillText(numFmt(v, s), X(i), Y(v) - fs * 0.9); } });
+      });
+      ctx.restore();
+    } else {
+      const group = slot * 0.72, bw = stacked ? group : group / series.length;
+      labels.forEach((_, i) => {
+        let pos = 0, neg = 0;
+        series.forEach((ser, j) => {
+          const v = ser.data[i];
+          if (!isFinite(v)) return;
+          let y0, y1;
+          if (stacked) { const from = v >= 0 ? pos : neg; y0 = Y(from); y1 = Y(from + v * ease); if (v >= 0) pos += v; else neg += v; }
+          else { y0 = base; y1 = Y(v * ease); }
+          const x = X(i) - group / 2 + (stacked ? 0 : j * bw);
+          ctx.fillStyle = colorOf(ser, j);
+          ctx.fillRect(x + (stacked ? 0 : 1), Math.min(y0, y1), bw - (stacked ? 0 : 2), Math.abs(y1 - y0));
+          if (s.values && k >= 1 && !stacked) { ctx.fillStyle = pal.ink; ctx.textAlign = 'center'; ctx.fillText(numFmt(v, s), x + bw / 2, v >= 0 ? y1 - fs * 0.6 : y1 + fs * 0.6); }
+        });
+        if (s.values && k >= 1 && stacked) { ctx.fillStyle = pal.ink; ctx.textAlign = 'center'; ctx.fillText(numFmt(pos + neg, s), X(i), Y(pos) - fs * 0.6); }
+      });
+    }
+    ctx.strokeStyle = pal.mute; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(left, base); ctx.lineTo(right, base); ctx.stroke();
+  }
+  function chart(target, spec) {
+    let cv = typeof target === 'string' ? (document.getElementById(target.replace(/^#/, '')) || document.querySelector(target)) : target;
+    if (!cv) { console.warn('[deck-kit] chart target not found:', target); return null; }
+    if (cv.tagName !== 'CANVAS') {
+      const c = el('canvas', 'dk-chart');
+      c.setAttribute('data-dk-gen', '');
+      cv.appendChild(c);
+      cv = c;
+    }
+    let s = normChart(spec || {}), k = 0, raf = 0, release = null;
+    const stop = () => { cancelAnimationFrame(raf); if (release) { release(); release = null; } };
+    const grow = () => {
+      stop();
+      if (reducedMotion() || s.animate === false || stepsAll || printUndo) { k = 1; drawChart(cv, s, 1); return; }
+      k = 0;
+      track(new Promise((res) => { release = res; setTimeout(res, 2000); }));
+      const t0 = performance.now();
+      const frame = (now) => {
+        k = Math.min(1, (now - t0) / (s.duration || 700));
+        drawChart(cv, s, k);
+        if (k < 1) raf = requestAnimationFrame(frame); else stop();
+      };
+      raf = requestAnimationFrame(frame);
+    };
+    api.widget(cv, {
+      enter: grow,
+      draw: () => drawChart(cv, s, k),
+      leave: () => { stop(); k = 0; },
+      print: () => { stop(); k = 1; drawChart(cv, s, 1); },
+    });
+    return {
+      canvas: cv,
+      update(next) { s = normChart(Object.assign({}, s, next)); k = 1; drawChart(cv, s, 1); return this; },
+      redraw() { drawChart(cv, s, k); return this; },
+      get spec() { return s; },
+    };
+  }
+  /** table[data-chart="bar|line|pie…"]: first column = labels, header row = series names. */
+  function tableChart(t) {
+    const rows = Array.from(t.querySelectorAll('tr')).map((r) => Array.from(r.children).map((c) => srcText(c).trim()));
+    if (rows.length < 2) return;
+    // Header: <thead>, a first row of <th>s, or a first row whose value cells aren't numbers.
+    const first = t.querySelector('tr');
+    const numeric = (c) => /^[^\p{L}]*\d[^\p{L}]*$/u.test(c);
+    const head = t.querySelector('thead tr') || (first && Array.from(first.children).every((c) => c.tagName === 'TH') ? first : null) ||
+      (rows[0].slice(1).some((c) => c && !numeric(c)) ? first : null);
+    const headRow = head ? Array.from(head.children).map((c) => srcText(c).trim()) : null;
+    const body = rows.filter((_, i) => !(head && i === 0 && rows[0].join('|') === headRow.join('|')));
+    const num = (c) => { const v = parseFloat(String(c).replace(/[\u2212\u2013]/g, '-').replace(/[\s,]/g, '').replace(/[^\d.eE+-]/g, '')); return isFinite(v) ? v : NaN; };
+    const cols = Math.max(...body.map((r) => r.length));
+    const series = [];
+    for (let j = 1; j < cols; j++) series.push({ name: headRow ? headRow[j] || '' : '', data: body.map((r) => num(r[j])) });
+    const spec = { type: t.getAttribute('data-chart') || 'bar', labels: body.map((r) => r[0]), series };
+    try { Object.assign(spec, JSON.parse(t.getAttribute('data-chart-options') || '{}')); } catch (e) { console.warn('[deck-kit] bad data-chart-options', e); }
+    const box = el('div', 'dk-chart-box');
+    box.setAttribute('data-dk-gen', '');
+    const h = t.getAttribute('data-chart-height');
+    if (h) box.style.height = /^\d+$/.test(h) ? h + 'px' : h;
+    const cv = el('canvas', 'dk-chart');
+    box.appendChild(cv);
+    t.after(box);
+    t.classList.add('dk-chart-src');
+    chart(cv, spec);
+  }
+
+  // ── Stepper: play / pause / step / reset for simulations ─────────────────
+  //   DeckKit.stepper('#sim', { frames: 60, interval: 100, reset(), step(k) })
+  // Declarative: <div data-stepper data-interval="900"> with [data-frame]
+  // children shows one frame at a time.
+  function stepper(target, opts = {}) {
+    const box = typeof target === 'string' ? (document.getElementById(target.replace(/^#/, '')) || document.querySelector(target)) : target;
+    if (!box) { console.warn('[deck-kit] stepper target not found:', target); return null; }
+    const o = Object.assign({ frames: Infinity, interval: 700, loop: false }, opts);
+    let k = 0, timer = null;
+    const bar = el('div', 'dk-stepper', `<button type="button" data-s="reset" title="${esc(L.resetT)}" aria-label="${esc(L.resetT)}">⏮</button><button type="button" data-s="play" title="${esc(L.play)}" aria-label="${esc(L.play)}">▶</button><button type="button" data-s="next" title="${esc(L.stepNext)}" aria-label="${esc(L.stepNext)}">⏭</button><span class="dk-stepper-n"></span>`);
+    bar.setAttribute('data-dk-gen', '');
+    guard(bar);
+    if (/^(CANVAS|IMG|SVG|VIDEO|svg)$/.test(box.tagName) || o.after) box.after(bar); else box.appendChild(bar);
+    const [bReset, bPlay, bNext] = bar.querySelectorAll('button');
+    const nEl = bar.querySelector('.dk-stepper-n');
+    const run = (f, ...a) => { try { if (f) f(...a); } catch (e) { console.error('[deck-kit] stepper failed:', e); } };
+    const render = () => {
+      nEl.textContent = isFinite(o.frames) ? `${k} / ${o.frames}` : String(k);
+      bPlay.textContent = timer ? '⏸' : '▶';
+      bPlay.title = timer ? L.pause : L.play;
+      bPlay.setAttribute('aria-label', bPlay.title);
+      bReset.disabled = k === 0 && !timer;
+      bNext.disabled = !o.loop && k >= o.frames;
+    };
+    const ctl = {
+      next() {
+        if (k >= o.frames) {
+          if (!o.loop) { ctl.pause(); return false; }
+          k = 0; run(o.reset, ctx); render();   // frame 0 gets its turn too
+          return true;
+        }
+        k++;
+        run(o.step, k, ctx);
+        render();
+        return true;
+      },
+      play() {
+        if (timer) return;
+        if (k >= o.frames && !o.loop) { k = 0; run(o.reset, ctx); }
+        timer = setInterval(() => { if (!ctl.next()) ctl.pause(); }, Math.max(16, o.interval));
+        render();
+      },
+      pause() { clearInterval(timer); timer = null; render(); },
+      reset() { ctl.pause(); k = 0; run(o.reset, ctx); render(); },
+      /** Jump to frame n by replaying from the start (simulations are deterministic). */
+      seek(n) { ctl.pause(); k = 0; run(o.reset, ctx); while (k < Math.min(n, isFinite(o.frames) ? o.frames : n)) { k++; run(o.step, k, ctx); } render(); },
+      get frame() { return k; },
+      get playing() { return !!timer; },
+      bar,
+    };
+    const ctx = { el: box, get frame() { return k; }, kit: api, stepper: ctl };
+    const actor = addActor('stepper', box, () => ({ k, p: !!timer }), (v) => { if (v.k !== k) ctl.seek(v.k); if (v.p) ctl.play(); else ctl.pause(); });
+    bar.addEventListener('click', (e) => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      const a = b.dataset.s;
+      if (a === 'reset') ctl.reset();
+      if (a === 'next') { ctl.pause(); ctl.next(); }
+      if (a === 'play') { if (timer) ctl.pause(); else ctl.play(); }
+      sendAct(actor);
+    });
+    run(o.reset, ctx);
+    render();
+    api.widget(box, { leave: () => ctl.pause() });
+    return ctl;
+  }
+  function setupFrames(box) {
+    if (box._dkStepper && box.querySelector(':scope > .dk-stepper')) return;
+    const frames = Array.from(box.querySelectorAll(':scope > [data-frame]'));
+    const list = frames.length ? frames : Array.from(box.querySelectorAll('[data-frame]'));
+    if (!list.length) return;
+    const show = (i) => list.forEach((f, j) => f.classList.toggle('dk-frame-off', j !== i));
+    box._dkStepper = stepper(box, {
+      frames: list.length - 1,
+      interval: parseFloat(box.getAttribute('data-interval')) || 900,
+      loop: box.hasAttribute('data-loop'),
+      reset: () => show(0),
+      step: (k) => show(k),
+    });
+  }
+
+  // ── Before / after slider ────────────────────────────────────────────────
+  // <div data-compare="50"><img src="before.jpg" data-label="Trước"><img src="after.jpg"></div>
+  function setupCompare(box) {
+    if (box.querySelector(':scope > .dk-cmp-range')) return;
+    const kids = realChildren(box);
+    if (kids.length < 2) { console.warn('[deck-kit] data-compare needs two children (before, after)', box); return; }
+    const [a, b] = kids;
+    box.classList.add('dk-cmp');
+    a.classList.add('dk-cmp-before');
+    b.classList.add('dk-cmp-after');
+    const start = parseFloat(box.getAttribute('data-compare'));
+    const inp = el('input', 'dk-cmp-range');
+    inp.type = 'range'; inp.min = '0'; inp.max = '100'; inp.step = '0.1';
+    inp.value = String(isFinite(start) ? Math.max(0, Math.min(100, start)) : 50);
+    inp.setAttribute('aria-label', L.compare);
+    inp.setAttribute('data-dk-gen', '');
+    const handle = el('div', 'dk-cmp-handle');
+    handle.setAttribute('data-dk-gen', '');
+    box.append(inp, handle);
+    [[a, 'dk-cmp-l'], [b, 'dk-cmp-r']].forEach(([x, cls]) => {
+      const t = x.getAttribute('data-label');
+      if (!t) return;
+      const lb = el('span', 'dk-cmp-label ' + cls);
+      lb.textContent = t;
+      lb.setAttribute('data-dk-gen', '');
+      box.appendChild(lb);
+    });
+    const set = () => box.style.setProperty('--dk-cmp', inp.value + '%');
+    inp.addEventListener('input', set);
+    set();
+    if (!box._dkCmp) { box._dkCmp = true; guard(box, '.dk-cmp-range'); }
+  }
+
+  // ── Hotspots: numbered dots on an image ──────────────────────────────────
+  // <div data-hotspots><img src="map.png">
+  //   <p data-hotspot="30%,40%">Explanation shown when dot 1 is clicked</p></div>
+  function setupHotspots(box) {
+    const tips = Array.from(box.querySelectorAll('[data-hotspot]')).filter((t) => (t.parentElement.closest('[data-hotspots]') || t.parentElement) === box);
+    if (!tips.length || box.querySelector(':scope > .dk-hs-dot')) return;
+    box.classList.add('dk-hs');
+    const pal = palette(box);
+    box.style.setProperty('--dk-hs-bg', pal.accents[0]);
+    box.style.setProperty('--dk-hs-fg', pal.bg);
+    box.style.setProperty('--dk-tip-bg', pal.bg);
+    box.style.setProperty('--dk-tip-fg', pal.ink);
+    const dots = [];
+    const setOpen = (list) => tips.forEach((t, i) => {
+      const on = list.includes(i);
+      t.classList.toggle('dk-open', on);
+      if (dots[i]) dots[i].setAttribute('aria-expanded', String(on));
+    });
+    const openList = () => tips.map((t, i) => (t.classList.contains('dk-open') ? i : -1)).filter((i) => i >= 0);
+    // Re-run on the same box (after an edit) reuses its sync slot.
+    const actor = box._dkActor || (box._dkActor = addActor('hotspot', box, openList, setOpen));
+    actor.state = openList;
+    actor.apply = setOpen;
+    tips.forEach((t, i) => {
+      const [x, y] = (t.getAttribute('data-hotspot') || '').split(/[\s,;]+/).map(parseFloat);
+      if (!isFinite(x) || !isFinite(y)) { console.warn('[deck-kit] data-hotspot needs "x%,y%":', t); return; }
+      t.classList.add('dk-hs-tip');
+      if (x > 60) t.classList.add('dk-hs-left');
+      t.style.setProperty('--dk-x', x + '%');
+      t.style.setProperty('--dk-y', y + '%');
+      const d = el('button', 'dk-hs-dot');
+      d.type = 'button';
+      d.textContent = t.getAttribute('data-label') || String(i + 1);
+      d.setAttribute('data-dk-gen', '');
+      d.setAttribute('aria-expanded', 'false');
+      d.setAttribute('aria-label', srcText(t).trim().slice(0, 80));
+      d.style.setProperty('--dk-x', x + '%');
+      d.style.setProperty('--dk-y', y + '%');
+      d.addEventListener('click', () => {
+        const now = openList();
+        // One bubble at a time unless the box says data-hotspots="many".
+        const many = box.getAttribute('data-hotspots') === 'many';
+        setOpen(now.includes(i) ? now.filter((j) => j !== i) : many ? now.concat(i) : [i]);
+        sendAct(actor);
+      });
+      box.appendChild(d);
+      dots[i] = d;
+    });
+    if (!box._dkHs) {
+      box._dkHs = true;
+      guard(box, '.dk-hs-dot, .dk-hs-tip');
+      api.widget(box, { leave: () => box._dkActor.apply([]) });
+    }
+  }
+
+  // ── QR codes ─────────────────────────────────────────────────────────────
+  // <div data-qr="https://example.com"></div>; an empty value means this
+  // deck's own address (when it is served over http/https).
+  function setupQr(box) {
+    if (box.querySelector(':scope > .dk-qr')) return;
+    let url = (box.getAttribute('data-qr') || '').trim();
+    if (!url) {
+      if (!/^https?:$/.test(location.protocol)) { console.warn('[deck-kit] data-qr is empty and the deck is a local file: give it a URL'); return; }
+      url = location.href.replace(/[?#].*$/, '');
+    } else if (!/^[a-z][\w+.-]*:/i.test(url) && /^https?:$/.test(location.protocol)) {
+      try { url = new URL(url, location.href).href; } catch (e) {}
+    }
+    track(loadLib('qr').then(() => {
+      if (box.querySelector(':scope > .dk-qr')) return;
+      const qrcode = window.qrcode;
+      if (qrcode.stringToBytesFuncs && qrcode.stringToBytesFuncs['UTF-8']) qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
+      const q = qrcode(0, box.getAttribute('data-qr-level') || 'M');
+      q.addData(url, 'Byte');
+      q.make();
+      const n = q.getModuleCount();
+      const pal = palette(box);
+      // Scanners need dark modules on a light ground: dark templates get a white card.
+      const dark = pal.dark, pad = dark ? 3 : 1, size = n + pad * 2;
+      let d = '';
+      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) d += `M${c + pad} ${r + pad}h1v1h-1z`;
+      const svg = `<svg class="dk-qr" data-dk-gen="" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" shape-rendering="crispEdges" role="img" aria-label="${esc(url)}">` +
+        (dark ? `<rect width="${size}" height="${size}" rx="1.5" fill="#fff"/>` : '') +
+        `<path d="${d}" fill="${dark ? '#000' : pal.ink}"/></svg>`;
+      box.insertAdjacentHTML('beforeend', svg);
+    })).catch(() => {
+      if (box.querySelector(':scope > .dk-qr')) return;
+      const f = el('span', 'dk-qr dk-qr-fallback');
+      f.textContent = url;
+      f.setAttribute('data-dk-gen', '');
+      box.appendChild(f);
+    });
+  }
+
+  // ── Zoom (Z): magnify part of the slide while presenting ─────────────────
+  const zoom = { on: false, picking: false, s: null, prev: null, timer: null, restore: null, x0: 0, y0: 0, dragging: false };
+  function startZoom() {
+    if (zoom.on || zoom.picking) { unzoom(); return; }
+    if (cur < 0) return;
+    zoom.picking = true;
+    show('zoomLayer', true);
+    flash(L.zoomHint, 2400);
+  }
+  function stopZoomPick() {
+    zoom.picking = false;
+    zoom.dragging = false;
+    show('zoomLayer', false);
+    ui.zoomBox.style.display = 'none';
+  }
+  function zoomTo(x, y, w, h) {
+    const s = slides[cur];
+    if (!s) return;
+    const r = s.getBoundingClientRect();
+    const k = s.offsetWidth ? r.width / s.offsetWidth : 1;
+    if (!r.width || !r.height || !k) return;
+    const point = w < 12 && h < 12;
+    let f = point ? 2.2 : Math.min(r.width / w, r.height / h);
+    f = Math.max(1.25, Math.min(8, f));
+    // Slide-local (unscaled) coordinates of the centre of the picked box.
+    const cx = (x + w / 2 - r.left) / k, cy = (y + h / 2 - r.top) / k;
+    const mx = s.offsetWidth / 2, my = s.offsetHeight / 2;
+    // Scaling by f about origin o moves c to o + f(c − o); choose o so c lands mid-slide.
+    const ox = (mx - f * cx) / (1 - f), oy = (my - f * cy) / (1 - f);
+    finishUnzoom();
+    if (!zoom.s) {
+      zoom.s = s;
+      zoom.prev = { scale: s.style.scale, origin: s.style.transformOrigin, transition: s.style.transition, overflow: document.documentElement.style.overflow };
+    }
+    document.documentElement.style.overflow = 'hidden';
+    s.style.transition = reducedMotion() ? 'none' : 'scale .45s cubic-bezier(.2, .7, .2, 1)';
+    s.style.transformOrigin = `${ox}px ${oy}px`;
+    s.style.scale = String(f);
+    zoom.on = true;
+  }
+  /** Run a zoom-out that is still animating to its end now. */
+  function finishUnzoom() {
+    clearTimeout(zoom.timer);
+    const r = zoom.restore;
+    zoom.restore = null;
+    if (r) r();
+  }
+  function unzoom(instant) {
+    stopZoomPick();
+    if (!zoom.s) { zoom.on = false; if (instant) finishUnzoom(); return; }
+    const s = zoom.s, prev = zoom.prev;
+    zoom.s = null;
+    zoom.on = false;
+    zoom.restore = () => {
+      s.style.scale = prev.scale; s.style.transformOrigin = prev.origin; s.style.transition = prev.transition;
+      document.documentElement.style.overflow = prev.overflow;
+      if (!s.getAttribute('style')) s.removeAttribute('style');
+    };
+    if (instant || reducedMotion()) { finishUnzoom(); return; }
+    s.style.scale = '1';
+    zoom.timer = setTimeout(finishUnzoom, 470);
+  }
+  function setupZoom() {
+    const layer = ui.zoomLayer, box = ui.zoomBox;
+    layer.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      layer.setPointerCapture(e.pointerId);
+      zoom.dragging = true; zoom.x0 = e.clientX; zoom.y0 = e.clientY;
+    });
+    layer.addEventListener('pointermove', (e) => {
+      if (!zoom.dragging) return;
+      const x = Math.min(zoom.x0, e.clientX), y = Math.min(zoom.y0, e.clientY);
+      Object.assign(box.style, { display: 'block', left: x + 'px', top: y + 'px', width: Math.abs(e.clientX - zoom.x0) + 'px', height: Math.abs(e.clientY - zoom.y0) + 'px' });
+    });
+    const end = (e) => {
+      if (!zoom.dragging) return;
+      const x = Math.min(zoom.x0, e.clientX), y = Math.min(zoom.y0, e.clientY), w = Math.abs(e.clientX - zoom.x0), h = Math.abs(e.clientY - zoom.y0);
+      stopZoomPick();
+      if (e.type === 'pointerup') zoomTo(x, y, w, h);
+    };
+    layer.addEventListener('pointerup', end);
+    layer.addEventListener('pointercancel', end);
+  }
+
+  /** Turn the author's markup into live features, inside `root` (a slide,
+   *  an element, or the whole document). Safe to call again on re-rendered
+   *  content (after typing or undo in edit mode). */
+  function enhance(root = document) {
+    const all = (sel) => {
+      const list = root.matches && root.matches(sel) ? [root] : [];
+      root.querySelectorAll(sel).forEach((e) => list.push(e));
+      return list.filter((e) => !e.closest('aside.notes') && !isGen(e) && slideOf(e));
+    };
+    slides.filter((s) => root === document || root.contains(s) || s.contains(root)).forEach((s) => renderMath(scanMath(s.contains(root) && root !== document ? root : s)));
+    all('pre').filter((p) => p.querySelector(':scope > code') || p.hasAttribute('data-lines') || p.hasAttribute('data-copy')).forEach(setupCode);
+    all('[data-quiz]').forEach(setupQuiz);
+    all('[data-compare]').forEach(setupCompare);
+    const hsBoxes = new Set();
+    all('[data-hotspot]').forEach((t) => hsBoxes.add(t.parentElement.closest('[data-hotspots]') || t.parentElement));
+    if (root.matches && root.matches('[data-hotspots]')) hsBoxes.add(root);
+    hsBoxes.forEach(setupHotspots);
+    all('[data-qr]').forEach(setupQr);
+    all('canvas[data-chart]').forEach((cv) => {
+      if (cv._dkChart) return;
+      let spec;
+      try { spec = JSON.parse(cv.getAttribute('data-chart')); } catch (e) { console.warn('[deck-kit] data-chart is not valid JSON:', cv, e.message); return; }
+      cv._dkChart = chart(cv, spec);
+    });
+    all('table[data-chart]').forEach((t) => { if (!t.nextElementSibling || !t.nextElementSibling.matches('.dk-chart-box')) tableChart(t); });
+    all('[data-stepper]').forEach(setupFrames);
+  }
+
   // ── Public API ───────────────────────────────────────────────────────────
   const api = {
     version: '2.0.0',
@@ -2273,8 +3386,22 @@
     get mode() { return adapter ? adapter.mode : null; },
     get slides() { return slides.slice(); },
     goTo: (i) => adapter && goto(i),
-    next: () => adapter && step(1),
-    prev: () => adapter && step(-1),
+    next: () => adapter && advance(1),
+    prev: () => adapter && advance(-1),
+    /** Steps on the current slide; all(true) shows every step everywhere (export, check). */
+    steps: {
+      get n() { return stepInfo().n; },
+      get total() { return stepInfo().total; },
+      set: (n) => { if (cur >= 0) setSteps(cur, n); },
+      all: (on = true) => showAllSteps(on),
+      get allOn() { return stepsAll; },
+    },
+    chart: (target, spec) => chart(target, spec),
+    stepper: (target, opts) => stepper(target, opts),
+    zoom: { out: () => unzoom(), get on() { return zoom.on; } },
+    sourceHtml: (node) => sourceHtml(node),
+    enhance: (root) => enhance(root || document),
+    get busy() { return busy; },
     /** Register an interactive widget for a slide (element, id, or any node inside it). */
     widget(target, hooks) {
       const w = { target, hooks: hooks || {}, slide: null };
@@ -2341,6 +3468,9 @@
       return;
     }
 
+    enhance(document);
+    slides.forEach((s) => applySteps(s, 0));
+
     if (ROLE === 'mirror') {
       // Preview inside the presenter window: slides only, no chrome, no input.
       ui.host.style.display = 'none';
@@ -2363,6 +3493,7 @@
     prepareMedia();
     setupTouch();
     setupInk();
+    setupZoom();
     document.querySelectorAll('[data-countdown]').forEach(cdRender);
     document.addEventListener('click', onDocClick);
     document.addEventListener('click', onLinkClick, true);
