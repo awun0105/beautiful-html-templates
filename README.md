@@ -57,7 +57,7 @@ Mở file `index.html` bằng trình duyệt là trình chiếu được. Bấm 
 | `E` | **Chỉnh sửa** — xem bên dưới |
 | `K` | Chép vị trí một phần tử để gửi cho agent |
 | `X` | Xuất file & chia sẻ |
-| `Z` | Phóng to: kéo khung (hoặc click) vào chỗ muốn phóng; `Z` / `Esc` để thu lại |
+| `Z` | Phóng to: kéo khung (hoặc click) vào chỗ muốn phóng; `Z` / `Esc` để thu lại. Ở màn hình người trình bày thì kéo khung trên ô slide hiện tại, máy chiếu phóng theo |
 | `F` | Toàn màn hình |
 | `Ctrl+P` | In ra PDF, mỗi slide một trang (biểu đồ hiện đủ) |
 
@@ -67,7 +67,7 @@ Giao diện các bảng là tiếng Việt khi deck viết bằng tiếng Việt
 
 Mẫu nào cũng chạy được biểu đồ động, thanh trượt, nút "xem đáp án", đồng hồ đếm ngược — hợp cho bài giảng. Ngoài ra, mỗi thứ dưới đây chỉ cần một thuộc tính HTML (màu và font tự theo mẫu):
 
-- **Hiện từng phần** — bấm `→` hiện ý tiếp theo, `←` ẩn lại (`data-step`).
+- **Hiện từng phần** — bấm `→` hiện ý tiếp theo, `←` ẩn lại (`data-step`); click chuột, cuộn chuột, vuốt hay nút ‹ › của mẫu cũng đi qua từng bước.
 - **Công thức toán** — gõ `$x^2$` hay `$$…$$` là ra công thức đẹp (KaTeX).
 - **Code** — tô màu cú pháp, bấm `→` để làm nổi từng dòng, có nút chép code.
 - **Câu hỏi trắc nghiệm** — bấm vào đáp án là biết đúng sai, kèm giải thích.
@@ -78,7 +78,7 @@ Mẫu nào cũng chạy được biểu đồ động, thanh trượt, nút "xem
 - **Mã QR** dẫn tới link bất kỳ.
 - **Phóng to** một vùng khi đang trình chiếu (phím `Z`).
 
-Bạn chỉ cần nói với agent điều mình muốn ("cho câu hỏi trắc nghiệm vào cuối phần 2", "vẽ biểu đồ doanh thu từ bảng này"); agent tra danh sách đầy đủ trong [`widgets-reference.md`](./widgets-reference.md). Bản in và file xuất luôn hiện đủ mọi bước. Xem thử: [`examples/features/index.html`](./examples/features/index.html) và [`examples/deck-kit-demo/index.html`](./examples/deck-kit-demo/index.html).
+Bạn chỉ cần nói với agent điều mình muốn ("cho câu hỏi trắc nghiệm vào cuối phần 2", "vẽ biểu đồ doanh thu từ bảng này"); agent tra danh sách đầy đủ trong [`widgets-reference.md`](./widgets-reference.md). Bản in và file xuất luôn hiện đủ mọi bước. Xem thử tất cả trong một deck: [`examples/deck-kit-demo/index.html`](./examples/deck-kit-demo/index.html).
 
 ## Video, âm thanh và chuyển động
 

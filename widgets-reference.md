@@ -11,6 +11,8 @@ Everything a slide can use from `deck-kit.js`, in one place. Read it before addi
 - **Check it.** Run `scripts/check-deck.mjs`, then open the deck and click through each interactive slide (→ for steps, click quiz options, drag the slider).
 - **Edit mode is safe.** What deck-kit generates (rendered maths, highlighted code, buttons, dots, QR images) is never saved into the file by `E`; the source keeps what you wrote.
 
+Every feature below is running in `examples/deck-kit-demo/index.html` — open it to see them, copy from its source.
+
 Quick index: [Slide data](#slide-data) · [Steps](#steps-data-step) · [Maths](#maths) · [Code](#code) · [Quiz](#quiz-data-quiz) · [Reveal & countdown](#reveal-and-countdown) · [Charts](#charts) · [Live canvas widgets](#live-canvas-widgets) · [Stepper](#stepper-play--pause--step) · [Before / after](#before--after-data-compare) · [Hotspots](#hotspots-data-hotspot) · [QR](#qr-code-data-qr) · [Media](#video-audio-embeds) · [Links](#links-between-slides) · [Keys](#keys-while-presenting) · [JS API](#javascript-api) · [Markdown](#markdown-md-to-deck) · [Page switches](#page-level-switches)
 
 ---
@@ -41,6 +43,7 @@ Reveal parts of a slide one at a time: **→** shows the next step, **←** hide
 - Hidden steps take their space (opacity 0), so the layout doesn't jump. They fade in (no fade with reduced motion).
 - Combine with code line stepping (`pre[data-lines]`) — those segments are steps too, in page order.
 - The presenter view shows `step 2/4`; its "next" preview shows the next step.
+- Every way of moving goes through the steps, not only the arrow keys: a click on an empty part of the slide (left third = back), the mouse wheel / trackpad (one step per flick), swipes, deck-stage's tap zones, the presenter view's ◀ ▶, and the template's own ‹ › buttons or click-to-advance (if a template still moves on by itself, deck-kit brings it back and shows the step). The template's slide-picker dots and thumbnails are jumps: they go straight to their slide. Links, buttons, inputs, canvases and code blocks keep their clicks.
 - Use for: building an argument, bullet-by-bullet lectures, revealing the answer in a diagram. Don't use on every slide — a deck where every bullet needs a click is slow.
 
 ## Maths
@@ -215,7 +218,7 @@ DeckKit.stepper('#walkCv', {
 
 ## Keys while presenting
 
-`→`/`←` (and Space, PgUp/PgDn) navigate and reveal steps · `1`–`9` Home End jump · `P` presenter view · `N` notes · `M` menu · `T` timer · `B`/`W` blank · `L` laser · `D` draw · `Z` zoom (drag a box or click; `Z`/`Esc` back) · `F` fullscreen · `E` edit · `K` copy location · `X` export & share · `Ctrl+P` print · `?` help.
+`→`/`←` (and Space, PgUp/PgDn) navigate and reveal steps · `1`–`9` Home End jump · `P` presenter view · `N` notes · `M` menu · `T` timer · `B`/`W` blank · `L` laser · `D` draw · `Z` zoom (drag a box or click; `Z`/`Esc` back — in the presenter view, drag over the current preview and the audience screen zooms) · `F` fullscreen · `E` edit · `K` copy location · `X` export & share · `Ctrl+P` print · `?` help.
 
 ## JavaScript API
 
@@ -238,7 +241,8 @@ DeckKit.stepper('#walkCv', {
 | `$x^2$`, `$$…$$` | Maths |
 | ```` ```python {1-2\|4} ```` | Highlighted code stepping through those lines |
 | ```` ```chart ```` + JSON | Chart (same JSON as `data-chart`) |
-| `- [x] right` / `- [ ] wrong` | Quiz (each item an option). A list where every item has a box is always a quiz — write a plain list for a to-do list |
+| `- (x) right` / `- ( ) wrong` | Quiz (each item an option; round brackets, like radio buttons) |
+| `- [x] done` / `- [ ] to do` | Task list with ticked / unticked boxes (not a quiz) |
 | `<!-- steps: true -->` | Every list item on that slide is a step |
 | `![](clip.mp4)`, YouTube link alone on a line | Player / embed |
 | Raw HTML lines | Passed through (use any attribute above) |

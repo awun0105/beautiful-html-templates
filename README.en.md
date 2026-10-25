@@ -57,7 +57,7 @@ Open `index.html` in a browser and present. Press `?` for every shortcut.
 | `E` | **Edit mode** — see below |
 | `K` | Copy an element's location for your agent |
 | `X` | Export & share |
-| `Z` | Zoom: drag a box (or click) to magnify that spot; `Z` / `Esc` zooms out |
+| `Z` | Zoom: drag a box (or click) to magnify that spot; `Z` / `Esc` zooms out. In the presenter view, drag over the current preview and the projector zooms |
 | `F` | Fullscreen |
 | `Ctrl+P` | Print to PDF, one slide per page (charts included) |
 
@@ -67,7 +67,7 @@ Panels are in Vietnamese when the deck is Vietnamese or your browser prefers Vie
 
 Every template runs live charts, sliders, "show answer" buttons and countdowns — great for teaching. On top of that, each of these is one HTML attribute (in the template's colours and fonts):
 
-- **Step-by-step reveals** — `→` shows the next point, `←` hides it (`data-step`).
+- **Step-by-step reveals** — `→` shows the next point, `←` hides it (`data-step`); clicks, the wheel, swipes and the template's own buttons step through too.
 - **Maths** — type `$x^2$` or `$$…$$` (KaTeX).
 - **Code** — syntax colours, `→` highlights line by line, a copy button.
 - **Multiple-choice quizzes** — click an answer to see right or wrong, with an explanation.
@@ -78,7 +78,7 @@ Every template runs live charts, sliders, "show answer" buttons and countdowns �
 - **QR codes** to any link.
 - **Zoom** into part of a slide while presenting (`Z`).
 
-Just tell the agent what you want ("add a quiz at the end of part 2", "chart revenue from this table"); it looks everything up in [`widgets-reference.md`](./widgets-reference.md). Prints and exports always show every step. Try [`examples/features/index.html`](./examples/features/index.html) and [`examples/deck-kit-demo/index.html`](./examples/deck-kit-demo/index.html).
+Just tell the agent what you want ("add a quiz at the end of part 2", "chart revenue from this table"); it looks everything up in [`widgets-reference.md`](./widgets-reference.md). Prints and exports always show every step. Try everything in one deck: [`examples/deck-kit-demo/index.html`](./examples/deck-kit-demo/index.html).
 
 ## Video, audio and motion
 

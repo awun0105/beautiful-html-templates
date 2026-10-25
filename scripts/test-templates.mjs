@@ -321,33 +321,44 @@ if (!only || only === "demo") {
 
 // ── Features: steps, maths, code, quiz, charts, stepper, compare, hotspots, QR, zoom ──
 if (!only || only === 'features') {
-  const deck = resolve(root, 'examples/features/index.html');
+  const deck = resolve(root, 'examples/deck-kit-demo/index.html');
   const ok = (name, cond, extra = '') => { if (!cond) failed++; console.log(`${cond ? 'ok  ' : 'FAIL'} features: ${name} ${extra}`); };
   const page = await openDeck(browser, deck, { width: 1600, height: 900 });
-  await page.evaluate(() => DeckKit.settle(0, { min: 200 }));
   const at = (id) => page.evaluate((id) => DeckKit.slides.findIndex((s) => s.id === id), id);
   const go = async (i) => { await page.evaluate((i) => DeckKit.goTo(i), i); await page.waitForFunction((i) => DeckKit.index === i, { timeout: 5000 }, i).catch(() => {}); await page.evaluate((i) => DeckKit.settle(i, { min: 250 }), i); };
+  const s0 = await at('steps');
+  await go(s0);
   const steps = () => page.evaluate(() => ({ i: DeckKit.index, n: DeckKit.steps.n, total: DeckKit.steps.total, off: DeckKit.slides[DeckKit.index].querySelectorAll('.dk-step-off').length }));
 
   // Steps: → reveals, then moves on; ← back into a slide shows every step.
   let st = await steps();
-  ok('slide starts with its steps hidden', st.i === 0 && st.n === 0 && st.total === 4 && st.off === 5, JSON.stringify(st));
+  ok('slide starts with its steps hidden', st.i === s0 && st.n === 0 && st.total === 4 && st.off === 5, JSON.stringify(st));
   await page.keyboard.press('ArrowRight'); await sleep(150);
   st = await steps();
-  ok('→ reveals the first step without changing slide', st.i === 0 && st.n === 1 && st.off === 4, JSON.stringify(st));
+  ok('→ reveals the first step without changing slide', st.i === s0 && st.n === 1 && st.off === 4, JSON.stringify(st));
   for (let k = 0; k < 3; k++) { await page.keyboard.press('ArrowRight'); await sleep(120); }
   st = await steps();
   ok('steps with the same number appear together', st.n === 4 && st.off === 0, JSON.stringify(st));
   await page.keyboard.press('ArrowRight');
-  await page.waitForFunction(() => DeckKit.index === 1, { timeout: 4000 }).catch(() => {});
-  ok('→ after the last step goes to the next slide', (await steps()).i === 1);
+  await page.waitForFunction((i) => DeckKit.index === i, { timeout: 4000 }, s0 + 1).catch(() => {});
+  ok('→ after the last step goes to the next slide', (await steps()).i === s0 + 1);
   await page.keyboard.press('ArrowLeft');
-  await page.waitForFunction(() => DeckKit.index === 0, { timeout: 4000 }).catch(() => {});
+  await page.waitForFunction((i) => DeckKit.index === i, { timeout: 4000 }, s0).catch(() => {});
   await sleep(200);
   st = await steps();
-  ok('← into a slide shows all its steps', st.i === 0 && st.n === 4 && st.off === 0, JSON.stringify(st));
+  ok('← into a slide shows all its steps', st.i === s0 && st.n === 4 && st.off === 0, JSON.stringify(st));
   await page.keyboard.press('ArrowLeft'); await sleep(150);
   ok('← hides the last step', (await steps()).n === 3);
+  // Clicks on the slide and the wheel go through steps too.
+  await page.mouse.click(1200, 820); await sleep(150);
+  ok('a click on the slide reveals the next step', (await steps()).n === 4);
+  await page.mouse.click(150, 820); await sleep(150);
+  ok('a click on the left third hides one', (await steps()).n === 3);
+  await page.mouse.move(800, 500);
+  await page.mouse.wheel({ deltaY: 120 }); await sleep(150);
+  await page.mouse.wheel({ deltaY: 120 }); await sleep(150);   // inside the flick lock: ignored
+  st = await steps();
+  ok('one wheel flick reveals one step', st.i === s0 && st.n === 4, JSON.stringify(st));
 
   // Maths: rendered, prices left alone, source kept for saving.
   const mi = await at('maths');
@@ -491,13 +502,13 @@ if (!only || only === 'features') {
   ok('Z + drag zooms into the box, Esc zooms out', zoomed > 1.5 && !unz.scale && !unz.origin, `${zoomed} ${JSON.stringify(unz)}`);
 
   // Print and exports show every step; the live state comes back afterwards.
-  await go(0);
-  const pr = await page.evaluate(() => {
+  await go(s0);
+  const pr = await page.evaluate((i) => {
     DeckKit.preparePrint();
     const during = document.querySelectorAll('.dk-step-off, .dk-ln.dk-dim').length;
     DeckKit.cleanupPrint();
-    return { during, after: DeckKit.slides[0].querySelectorAll('.dk-step-off').length };
-  });
+    return { during, after: DeckKit.slides[i].querySelectorAll('.dk-step-off').length };
+  }, s0);
   ok('print shows every step, then restores', pr.during === 0 && pr.after === 5, JSON.stringify(pr));
   ok('no page errors', !page._errors.length, page._errors.join(' | ').slice(0, 200));
 
@@ -513,7 +524,7 @@ if (!only || only === 'features') {
     await sleep(600);
     const a = await page.evaluate(() => ({ i: DeckKit.index, n: DeckKit.steps.n }));
     const pos = await pv.evaluate(() => document.querySelector('#deck-kit').shadowRoot.querySelector('.dk-pos').textContent);
-    ok('→ in the presenter reveals a step on the audience screen', a.i === 0 && a.n === 1 && /1\/4/.test(pos), `${JSON.stringify(a)} "${pos}"`);
+    ok('→ in the presenter reveals a step on the audience screen', a.i === s0 && a.n === 1 && /1\/4/.test(pos), `${JSON.stringify(a)} "${pos}"`);
     await page.evaluate((i) => DeckKit.goTo(i), qi);
     await sleep(1500);
     let f = null;
@@ -521,6 +532,20 @@ if (!only || only === 'features') {
     if (f) await f.evaluate((i) => DeckKit.slides[i].querySelectorAll('[data-option]')[2].click(), qi);
     await sleep(600);
     ok('quiz answered in the preview shows on the audience screen', await page.evaluate((i) => DeckKit.slides[i].querySelectorAll('[data-option]')[2].classList.contains('dk-right'), qi));
+    // Z in the presenter: drag over the current preview, the audience screen zooms.
+    await page.evaluate((i) => DeckKit.goTo(i), zi);
+    await sleep(1500);
+    await pv.bringToFront();
+    await pv.keyboard.press('z');
+    const fr = await pv.evaluate(() => { const r = document.querySelector('#deck-kit').shadowRoot.querySelector('.dk-pvzl').getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; });
+    await pv.mouse.move(fr.x + fr.w * 0.1, fr.y + fr.h * 0.3); await pv.mouse.down();
+    await pv.mouse.move(fr.x + fr.w * 0.4, fr.y + fr.h * 0.5, { steps: 4 }); await pv.mouse.up();
+    await sleep(900);
+    const zm = await page.evaluate((i) => +DeckKit.slides[i].style.scale || 1, zi);
+    await pv.keyboard.press('z');
+    await sleep(900);
+    const zo = await page.evaluate((i) => DeckKit.slides[i].style.scale, zi);
+    ok('Z in the presenter zooms the audience screen, Z again zooms out', zm > 2 && !zo, `${zm} "${zo}"`);
     await pv.close();
   } else ok('presenter opens', false);
   await page.close();
@@ -532,13 +557,15 @@ if (!only || only === 'features') {
       '# Features', 'sub', '', '---', '<!-- steps: true -->', '## Steps and maths', '- one $a_1 + b_2$ and *em*', '- two costs $5 and $10', '',
       '---', '## Code', '```python {1|2}', 'x = 1', 'y = 2', '```', '',
       '---', '## Chart', '```chart', '{"type":"bar","labels":["a","b"],"data":[1,2]}', '```', '',
-      '---', '## Quiz', '- [ ] no', '- [x] yes', '- [ ] maybe', '',
+      '---', '## Quiz', '- ( ) no', '- (x) yes', '- ( ) maybe', '',
+      '---', '## Tasks', '- [x] write', '- [ ] rehearse', '',
     ].join('\n'));
     let html = '';
     try { execSync(`node "${resolve(root, 'scripts/md-to-deck.mjs')}" "${join(dir, 'f.md')}" --theme=vellum --out="${join(dir, 'deck')}"`); html = readFileSync(join(dir, 'deck/index.html'), 'utf8'); } catch (e) { html = String(e.message); }
     ok('md-to-deck: maths untouched by emphasis', /\$a_1 \+ b_2\$/.test(html) && /<em>em<\/em>/.test(html));
     ok('md-to-deck: steps, code lines, chart, quiz', /<ul data-steps>/.test(html) && /<pre class="code" data-lines="1\|2"><code class="language-python">/.test(html) &&
       /<canvas class="chart" data-chart="\{&quot;type&quot;:&quot;bar&quot;/.test(html) && /<ul class="quiz" data-quiz><li data-option>no<\/li><li data-option data-correct>yes<\/li>/.test(html));
+    ok('md-to-deck: [x] / [ ] lists are task lists, not quizzes', /<li><span class="task done"><\/span>write<\/li><li><span class="task"><\/span>rehearse/.test(html) && (html.match(/data-quiz/g) || []).length === 1);
     const mp = await openDeck(browser, join(dir, 'deck/index.html'), { width: 1600, height: 900 });
     await mp.evaluate(() => DeckKit.goTo(1)); await sleep(600);
     await mp.evaluate(() => DeckKit.settle(1, { min: 200 }));
@@ -569,6 +596,35 @@ if (!only || only === 'features') {
     ok('bundled deck renders maths and QR offline', off.katex >= 2 && off.qr && remote === 0, JSON.stringify(off) + ` remote=${remote}`);
     await bp.close();
     rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+// Templates that move on their own (click-to-advance, their own ‹ › buttons) still go through steps.
+if (!only || only === 'features') {
+  const ok = (name, cond, extra = '') => { if (!cond) failed++; console.log(`${cond ? 'ok  ' : 'FAIL'} features: ${name} ${extra}`); };
+  for (const [slug, how] of [['coral', 'arrow'], ['bold-poster', 'click']]) {
+    const tp = await openDeck(browser, resolve(root, 'templates', slug, 'template.html'), { width: 1600, height: 900 });
+    await sleep(800);
+    await tp.evaluate(() => {
+      const s = DeckKit.slides[0];
+      [...s.querySelectorAll('*')].filter((e) => !e.children.length && e.textContent.trim()).slice(0, 2).forEach((e) => e.setAttribute('data-step', ''));
+      DeckKit.steps.set(0);
+    });
+    if (how === 'arrow') await tp.evaluate(() => document.getElementById('nextArrow').click());
+    else await tp.mouse.click(1300, 450);
+    await sleep(2200);
+    const r = await tp.evaluate(() => ({ i: DeckKit.index, n: DeckKit.steps.n, total: DeckKit.steps.total }));
+    ok(`${slug}: the template's own ${how === 'arrow' ? '→ button' : 'click-to-advance'} reveals a step instead of leaving`, r.i === 0 && r.n === 1 && r.total === 2, JSON.stringify(r));
+    if (how === 'arrow') {
+      // A dot in the template's own slide picker is a jump, even to the next slide.
+      const dot = await tp.evaluate(() => { const r = document.querySelectorAll('.nav-dot')[1].getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+      await tp.mouse.click(dot.x, dot.y);
+      await sleep(2200);
+      const d = await tp.evaluate(() => ({ i: DeckKit.index }));
+      ok(`${slug}: a dot for the next slide jumps there, steps or not`, d.i === 1, JSON.stringify(d));
+    }
+    ok(`${slug}: no page errors`, !tp._errors.length, tp._errors.join(' | ').slice(0, 160));
+    await tp.close();
   }
 }
 

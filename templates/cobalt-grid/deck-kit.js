@@ -332,6 +332,9 @@
       box-shadow: 0 0 0 1px rgba(148,163,184,.25); }
     .dk-pv .dk-frame iframe { position: absolute; left: 0; top: 0; width: 1600px; height: 900px; border: 0; transform-origin: 0 0; pointer-events: none; }
     .dk-pv .dk-cur iframe { pointer-events: auto; } /* drive sliders/buttons from the laptop */
+    .dk-pv .dk-pvzl { position: absolute; inset: 0; display: none; cursor: zoom-in; touch-action: none; background: rgba(59,130,246,.06); }
+    .dk-pv .dk-pvzl.dk-show { display: block; }
+    .dk-pv .dk-pvzl i { position: absolute; display: none; border: 2px dashed #3B82F6; background: rgba(59,130,246,.15); pointer-events: none; }
     .dk-pv .dk-frame .dk-endcard { position: absolute; inset: 0; display: none; place-items: center; color: #94A3B8; font-size: 18px; }
     .dk-pv .dk-frame.dk-end .dk-endcard { display: grid; }
     .dk-pv .dk-frame.dk-end iframe { visibility: hidden; }
@@ -445,6 +448,7 @@
     i = Math.max(0, Math.min(slides.length - 1, i));
     if (ROLE === 'presenter') { send(window.opener, { dk: 'go', index: i }); return; }
     // Steps revealed on arrival: none for a jump, all when stepping back into a slide.
+    lastKitGo = { i, at: performance.now() };
     const back = { slide: stepState.slide, n: stepState.n };
     setSteps(i, steps);
     const now = performance.now();
@@ -1084,13 +1088,53 @@
     show('notes', false);
   }
 
+  // Presenter: Z picks a box over the current preview; the audience screen zooms there.
+  const pvZoom = { on: false, picking: false, x0: 0, y0: 0, drag: false };
+  function pvZoomKey() {
+    if (pvZoom.on || pvZoom.picking) {
+      pvZoom.picking = false;
+      pv.zl.classList.remove('dk-show');
+      if (pvZoom.on) {
+        pvZoom.on = false;
+        const m = { dk: 'zoom', slide: cur, off: true };
+        send(window.opener, m); send(pv.fc.contentWindow, m);
+      }
+      return;
+    }
+    pvZoom.picking = true;
+    pv.zl.classList.add('dk-show');
+    flash(L.zoomHint, 2400);
+  }
+  function setupPvZoom() {
+    const zl = pv.zl = pv.box.querySelector('.dk-pvzl'), box = zl.firstElementChild;
+    const frac = (e) => { const r = zl.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]; };
+    zl.addEventListener('pointerdown', (e) => { e.preventDefault(); zl.setPointerCapture(e.pointerId); pvZoom.drag = true; [pvZoom.x0, pvZoom.y0] = frac(e); });
+    zl.addEventListener('pointermove', (e) => {
+      if (!pvZoom.drag) return;
+      const [x, y] = frac(e);
+      Object.assign(box.style, { display: 'block', left: Math.min(x, pvZoom.x0) * 100 + '%', top: Math.min(y, pvZoom.y0) * 100 + '%', width: Math.abs(x - pvZoom.x0) * 100 + '%', height: Math.abs(y - pvZoom.y0) * 100 + '%' });
+    });
+    const end = (e) => {
+      if (!pvZoom.drag) return;
+      const [x, y] = frac(e);   // measure before the layer hides (a hidden layer has no size)
+      pvZoom.drag = false; pvZoom.picking = false;
+      box.style.display = 'none';
+      zl.classList.remove('dk-show');
+      if (e.type !== 'pointerup' || !isFinite(x + y)) return;
+      // The preview converts the box to slide coordinates and tells the audience screen.
+      send(pv.fc.contentWindow, { dk: 'zoom-pick', x: Math.min(x, pvZoom.x0), y: Math.min(y, pvZoom.y0), w: Math.abs(x - pvZoom.x0), h: Math.abs(y - pvZoom.y0) });
+    };
+    zl.addEventListener('pointerup', end);
+    zl.addEventListener('pointercancel', end);
+  }
+
   let pv = null;
   let pvSteps = null;   // presenter: { n, total } steps shown on the audience screen
   function buildPresenter() {
     const root = ui.root;
     const box = el('div', 'dk-pv', `
       <div class="dk-top"><div class="dk-title"></div><span class="dk-msg"></span><span class="dk-status"></span><span class="dk-clock" title="pause"></span></div>
-      <div class="dk-main"><div class="dk-lbl">${esc(L.current)}</div><div class="dk-frame dk-cur"><iframe title="current"></iframe></div></div>
+      <div class="dk-main"><div class="dk-lbl">${esc(L.current)}</div><div class="dk-frame dk-cur"><iframe title="current"></iframe><div class="dk-pvzl"><i></i></div></div></div>
       <div class="dk-side">
         <div><div class="dk-lbl">${esc(L.next)}</div><div class="dk-frame dk-nx"><iframe title="next"></iframe><div class="dk-endcard">${esc(L.end)}</div></div></div>
         <div class="dk-nrow"><div class="dk-lbl">${esc(L.notes)} <span class="dk-meta"></span></div>
@@ -1112,6 +1156,7 @@
       notesBox: box.querySelector('.dk-pnotes'), nstat: box.querySelector('.dk-nstat'), editBtn: box.querySelector('[data-n="edit"]'),
     };
     pv.clock.addEventListener('click', () => timerCmd('pause'));
+    setupPvZoom();
     if (pv.editBtn) {
       pv.editBtn.addEventListener('click', () => setEditing(!editing));
       box.querySelector('[data-n="save"]').addEventListener('click', saveNotesToFile);
@@ -1189,6 +1234,7 @@
       if (m.dk === 'go') goto(m.index);
       if (m.dk === 'nav') advance(m.d);
       if (m.dk === 'act') applyAct(m);
+      if (m.dk === 'zoom') applyZoom(m);
       if (m.dk === 'timer') timerCmd(m.cmd);
       if (m.dk === 'key') handleKey(m.key, m.shift);
       if (m.dk === 'control') applyControl(m);
@@ -1200,6 +1246,7 @@
       const fromPreview = pv && (e.source === pv.fc.contentWindow || e.source === pv.fn.contentWindow);
       if (fromPreview) {
         // Interaction inside a preview: forward to the audience screen.
+        if (m.dk === 'zoom') { pvZoom.on = !m.off; send(window.opener, m); return; }
         if (m.dk === 'control' || m.dk === 'reveal' || m.dk === 'act') {
           send(window.opener, m);
           // Both previews may show this slide (the next one a step further).
@@ -1215,10 +1262,14 @@
         pv.heard();
         timer = m.timer;
         const st = m.steps || { n: 0, total: 0 };
-        if (m.index !== cur) { cur = m.index; pvSteps = st; renderPresenter(); }
+        if (m.index !== cur) { cur = m.index; pvSteps = st; pvZoom.on = false; renderPresenter(); }
         else if (!pvSteps || st.n !== pvSteps.n || st.total !== pvSteps.total) { pvSteps = st; renderPreviews(); }
         lastTimerText = '';
         renderTimer();
+      }
+      if (m.dk === 'zoom') {
+        if (m.slide === cur) { pvZoom.on = !m.off; send(pv.fc.contentWindow, m); }
+        else if (m.off) pvZoom.on = false;
       }
       if (m.dk === 'sync' || m.dk === 'control' || m.dk === 'reveal' || m.dk === 'act') {
         // The "next" preview may show this same slide (one step further).
@@ -1233,6 +1284,8 @@
       if (m.dk === 'control') applyControl(m);
       if (m.dk === 'reveal') applyReveal(m);
       if (m.dk === 'act') applyAct(m);
+      if (m.dk === 'zoom') applyZoom(m);
+      if (m.dk === 'zoom-pick') zoomPick(m);
     }
   }
 
@@ -2056,6 +2109,7 @@
 
   // ── Navigation hook ──────────────────────────────────────────────────────
   function onChange(i, prev) {
+    if (bounceStep(i, prev)) return;
     if (prev >= 0 && slides[prev]) widgetsOn(slides[prev]).forEach((w) => call(w, 'leave'));
     if (prev >= 0 && prev !== i) stopMedia(slides[prev]);
     if (zoom.on || zoom.picking) unzoom(true);
@@ -2130,7 +2184,10 @@
       case 't': if (ROLE === 'main') { show('tmr'); renderTimer(); } break;
       case 'T': timerCmd('reset'); flash(L.elapsed + ' 0:00'); break;
       case 'f': case 'F': toggleFullscreen(); break;
-      case 'z': case 'Z': if (ROLE !== 'main' || ed.on) return false; startZoom(); break;
+      case 'z': case 'Z':
+        if (ROLE === 'presenter') { if (pv) pvZoomKey(); break; }
+        if (ROLE !== 'main' || ed.on) return false;
+        startZoom(); break;
       case 'b': case 'B': case '.': setBlank('black'); broadcast(); break;
       case 'w': case 'W': setBlank('white'); broadcast(); break;
       case 'l': case 'L': setLaser(); break;
@@ -2139,6 +2196,7 @@
       case 'Backspace': if (ink.on && ink.strokes[cur] && ink.strokes[cur].length) { ink.strokes[cur].pop(); drawInk(); } else return false; break;
       case '?': show('help'); break;
       case 'Escape':
+        if (ROLE === 'presenter' && pv && (pvZoom.on || pvZoom.picking)) pvZoomKey();
         if (picking) stopPick();
         if (zoom.on || zoom.picking) unzoom();
         ['menu', 'help', 'notes', 'share'].forEach((p) => show(p, false));
@@ -2607,6 +2665,87 @@
     const to = t + d;
     if (to < 0 || to >= slides.length) return;
     goto(to, d < 0 ? Infinity : 0);
+  }
+  // Templates also change slides on their own: clicks anywhere (or on their
+  // ‹ › buttons), the wheel, swipes, deck-stage's tap zones. While the slide
+  // still has steps, plain clicks and the wheel go through the steps first;
+  // anything that still moves the deck one slide is sent back and becomes a
+  // step instead (onChange → bounceStep).
+  const INTERACTIVE = 'a[href], button, input, select, textarea, label, summary, canvas, video, audio, iframe, pre, ' +
+    '[contenteditable], [tabindex], [role="button"], [role="slider"], [onclick], [data-noswipe], [data-countdown], [data-reveal], ' +
+    '[data-quiz], [data-compare], [data-hotspots], .dk-stepper';
+  let lastKitGo = { i: -1, at: 0 };   // deck-kit's own last goto (vs. the template moving by itself)
+  let lastPress = { el: null, at: 0 }; // what the user last clicked / tapped
+  /** A slide-picker dot: one of a row of same-tag siblings with one entry per
+   *  slide (outside the slides). Clicking it is a jump, not "next". */
+  function isSlidePicker(node) {
+    for (let e = node && node.nodeType === 1 ? node : node && node.parentElement; e && e !== document.body; e = e.parentElement) {
+      if (slides.includes(e) || slides.some((s) => e.contains(s))) return false;
+      const p = e.parentElement;
+      if (!p) return false;
+      const kin = Array.prototype.filter.call(p.children, (c) => c.tagName === e.tagName);
+      if (kin.length === slides.length && p.children.length <= slides.length + 2 && kin.length > 1) return true;
+    }
+    return false;
+  }
+  let bounced = { from: -1, to: -1, at: 0 };
+  const stepsQuiet = () => ROLE !== 'main' || stepsAll || ed.on || picking || ink.on || zoom.on || zoom.picking || cur < 0;
+  function onStepClick(ev) {
+    if (stepsQuiet() || ev.button !== 0 || ev.defaultPrevented || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey) return;
+    const path = ev.composedPath();
+    // deck-stage's touch tap zones sit over the slide in its shadow DOM.
+    const zone = path.find((n) => n.classList && n.classList.contains('tapzone'));
+    if (path.includes(ui.host) || !(zone || path.includes(slides[cur]))) return;
+    if (path.some((n) => n.nodeType === 1 && n.matches && n.matches(INTERACTIVE))) return;
+    if (String(getSelection() || '').trim()) return;   // selecting text, not advancing
+    const { n, total } = stepInfo();
+    // Left third = back, as deck-stage's taps.
+    const back = zone ? zone.classList.contains('tapzone--back') : ev.clientX < innerWidth / 3;
+    if (back ? n === 0 : n >= total) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    advance(back ? -1 : 1);
+  }
+  let wheelLock = 0, wheelSum = 0;
+  function onStepWheel(ev) {
+    if (stepsQuiet() || ev.ctrlKey) return;
+    const now = performance.now();
+    if (now < wheelLock) { ev.preventDefault(); ev.stopPropagation(); wheelLock = Math.max(wheelLock, now + 250); return; }
+    const t = ev.composedPath()[0];
+    if (t && t.closest && t.closest('#deck-kit, input, select, textarea')) return;
+    const unit = ev.deltaMode === 1 ? 16 : ev.deltaMode === 2 ? innerHeight : 1;
+    const d = (Math.abs(ev.deltaY) >= Math.abs(ev.deltaX) ? ev.deltaY : ev.deltaX) * unit;
+    // A scrollable box on the slide keeps its own scrolling.
+    for (let e = t && t.nodeType === 1 ? t : null; e && e !== slides[cur] && e !== document.body; e = e.parentElement) {
+      const oy = getComputedStyle(e).overflowY;
+      if (/auto|scroll/.test(oy) && e.scrollHeight > e.clientHeight + 1 &&
+        (d > 0 ? e.scrollTop + e.clientHeight < e.scrollHeight - 1 : e.scrollTop > 0)) return;
+    }
+    const { n, total } = stepInfo();
+    if (!(d > 0 ? n < total : d < 0 && n > 0)) { wheelSum = 0; return; }
+    ev.preventDefault();
+    ev.stopPropagation();
+    wheelSum += d;
+    if (Math.abs(wheelSum) < 30) return;
+    wheelSum = 0;
+    // One step per flick: trackpad inertia keeps sending events for a while.
+    wheelLock = now + 450;
+    advance(d > 0 ? 1 : -1);
+  }
+  /** The template moved one slide by itself while the old slide still had
+   *  steps to show (or hide): go back and take a step instead. */
+  function bounceStep(i, prev) {
+    if (stepsQuiet() || prev < 0 || Math.abs(i - prev) !== 1 || !slides[prev]) return false;
+    const now = performance.now();
+    if (lastKitGo.i === i && now - lastKitGo.at < 2500) return false;           // deck-kit sent it there
+    if (now - lastPress.at < 1500 && isSlidePicker(lastPress.el)) return false;  // a dot in the template's slide picker
+    if (pending && pending.i === prev) return true;                             // already on the way back
+    if (bounced.from === prev && bounced.to === i && now - bounced.at < 3000) return false;   // template won't come back: accept
+    const pn = stepState.slide === prev ? stepState.n : 0, pt = stepGroups(slides[prev]).length;
+    if (i > prev ? pn >= pt : pn <= 0) return false;
+    bounced = { from: prev, to: i, at: now };
+    goto(prev, pn + (i > prev ? 1 : -1));
+    return true;
   }
   /** Would this key change the steps on the current slide (rather than the slide)? */
   function stepKey(key) {
@@ -3280,21 +3419,29 @@
     show('zoomLayer', false);
     ui.zoomBox.style.display = 'none';
   }
+  /** Zoom to the box (client px) picked on the current slide, and tell the other window. */
   function zoomTo(x, y, w, h) {
     const s = slides[cur];
-    if (!s) return;
+    if (!s || zoom.on) return;
     const r = s.getBoundingClientRect();
-    const k = s.offsetWidth ? r.width / s.offsetWidth : 1;
-    if (!r.width || !r.height || !k) return;
+    if (!r.width || !r.height) return;
     const point = w < 12 && h < 12;
-    let f = point ? 2.2 : Math.min(r.width / w, r.height / h);
+    const f = point ? 2.2 : Math.min(r.width / w, r.height / h);
+    // Centre as a fraction of the slide, so both screens zoom the same spot whatever their size.
+    const fx = (x + w / 2 - r.left) / r.width, fy = (y + h / 2 - r.top) / r.height;
+    zoomCore(s, fx, fy, f);
+    route({ dk: 'zoom', slide: cur, fx, fy, f });
+  }
+  /** Scale slide s by f so the point (fx, fy) — fractions of the slide — lands in its middle. */
+  function zoomCore(s, fx, fy, f) {
     f = Math.max(1.25, Math.min(8, f));
-    // Slide-local (unscaled) coordinates of the centre of the picked box.
-    const cx = (x + w / 2 - r.left) / k, cy = (y + h / 2 - r.top) / k;
+    fx = Math.max(0, Math.min(1, fx)); fy = Math.max(0, Math.min(1, fy));
+    const cx = fx * s.offsetWidth, cy = fy * s.offsetHeight;
     const mx = s.offsetWidth / 2, my = s.offsetHeight / 2;
     // Scaling by f about origin o moves c to o + f(c − o); choose o so c lands mid-slide.
     const ox = (mx - f * cx) / (1 - f), oy = (my - f * cy) / (1 - f);
     finishUnzoom();
+    if (zoom.s && zoom.s !== s) unzoom(true, true);
     if (!zoom.s) {
       zoom.s = s;
       zoom.prev = { scale: s.style.scale, origin: s.style.transformOrigin, transition: s.style.transition, overflow: document.documentElement.style.overflow };
@@ -3312,10 +3459,11 @@
     zoom.restore = null;
     if (r) r();
   }
-  function unzoom(instant) {
+  function unzoom(instant, quiet) {
     stopZoomPick();
     if (!zoom.s) { zoom.on = false; if (instant) finishUnzoom(); return; }
     const s = zoom.s, prev = zoom.prev;
+    if (!quiet) route({ dk: 'zoom', slide: slides.indexOf(s), off: true });
     zoom.s = null;
     zoom.on = false;
     zoom.restore = () => {
@@ -3326,6 +3474,19 @@
     if (instant || reducedMotion()) { finishUnzoom(); return; }
     s.style.scale = '1';
     zoom.timer = setTimeout(finishUnzoom, 470);
+  }
+  /** A zoom message from the other window. */
+  function applyZoom(m) {
+    applyingRemote = true;
+    try {
+      if (m.off) { if (zoom.s && zoom.s === slides[m.slide]) unzoom(); }
+      else if (m.slide === cur && slides[cur] && isFinite(m.fx + m.fy + m.f)) zoomCore(slides[cur], m.fx, m.fy, m.f);
+    } finally { applyingRemote = false; }
+  }
+  /** Mirror: a box picked over this preview in the presenter window (viewport fractions). */
+  function zoomPick(m) {
+    if (!isFinite(m.x + m.y + m.w + m.h)) return;
+    zoomTo(m.x * innerWidth, m.y * innerHeight, m.w * innerWidth, m.h * innerHeight);
   }
   function setupZoom() {
     const layer = ui.zoomLayer, box = ui.zoomBox;
@@ -3494,6 +3655,9 @@
     setupTouch();
     setupInk();
     setupZoom();
+    window.addEventListener('click', onStepClick, true);
+    window.addEventListener('pointerdown', (e) => { lastPress = { el: e.composedPath()[0], at: performance.now() }; }, true);
+    window.addEventListener('wheel', onStepWheel, { capture: true, passive: false });
     document.querySelectorAll('[data-countdown]').forEach(cdRender);
     document.addEventListener('click', onDocClick);
     document.addEventListener('click', onLinkClick, true);

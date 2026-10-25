@@ -254,7 +254,7 @@ Every template loads `deck-kit.js` after its own navigation script. It finds the
 
 | Key / action | What it does |
 |---|---|
-| `←` `→` Space PgUp/PgDn Home End `1`–`9` | Navigate. `→` first reveals the slide's next step (`data-step`), `←` hides it. Presses during a template's slide transition are queued, not dropped |
+| `←` `→` Space PgUp/PgDn Home End `1`–`9` | Navigate. `→` first reveals the slide's next step (`data-step`), `←` hides it — so do clicks on the slide, the wheel, swipes and the template's own buttons. Presses during a template's slide transition are queued, not dropped |
 | `P` | **Presenter view**: a second window with current + next slide, notes, timer and plan. Put it on the laptop, keep the original window on the projector (displays in *extend* mode). Sliders, inputs and revealed answers stay in sync both ways — you can drive a demo from the laptop's preview. **✎ Edit** turns the notes into an editor (changes show at once and survive a reload as a draft); **💾 Save to file** writes them into the deck's HTML (Chrome/Edge: pick the deck file once; other browsers get `notes.json` for `scripts/apply-notes.mjs`) |
 | `N` | Speaker-notes panel on this screen (use `P` when the screen is projected) |
 | `M` | Slide menu grouped by section, with planned start minute; click to jump |
@@ -262,7 +262,7 @@ Every template loads `deck-kit.js` after its own navigation script. It finds the
 | `B` / `W` | Black / white screen |
 | `L` | Laser pointer |
 | `D` | Draw on the slide; `C` clears that slide's ink, `Backspace` undoes, `Esc` stops. Ink stays with its slide |
-| `Z` | Zoom: drag a box (or click a point) to magnify that part of the slide; `Z` / `Esc` zooms out |
+| `Z` | Zoom: drag a box (or click a point) to magnify that part of the slide; `Z` / `Esc` zooms out. Works from the presenter view too: drag over the current preview and the projector zooms |
 | `F` | Fullscreen |
 | `Ctrl/Cmd+P` | Visits every slide (so charts drawn on entry fill in), then prints one slide per page, canvases kept |
 | `E` | **Edit mode**: click to select, drag to move, drag the handles to resize (corners scale text), double-click to retype, `Del` hides, arrows nudge, `Ctrl+Z`/`Ctrl+Y`. `E` again **saves into the HTML file** — only the edited tags change (`style="translate: …; width: …"` and new text). If the file changed on disk after the page was opened (e.g. you edited it), saving stops and asks for a reload (the edits stay as a draft); elements a template's script creates at runtime can't be saved and are reported |

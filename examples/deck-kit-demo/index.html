@@ -30,6 +30,14 @@
   .answer { background:var(--lemon); border-radius:20px; padding:24px 32px; font-size:36px; }
   .big { font-family:"Cormorant Garamond", serif; font-size:260px; line-height:1; }
   kbd { font:600 28px ui-monospace, Menlo, monospace; background:#fff; border-radius:8px; padding:2px 12px; }
+  /* feature slides */
+  ul { margin:0; padding-left:1.1em; display:flex; flex-direction:column; gap:16px; }
+  pre { margin:0; background:#fff; border-radius:20px; padding:30px 36px; font:30px/1.55 ui-monospace, Menlo, Consolas, monospace; white-space:pre-wrap; }
+  .quiz { list-style:none; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+  .quiz li { background:#fff; border-radius:18px; padding:22px 30px; }
+  .explain { background:var(--lemon); border-radius:18px; padding:20px 28px; }
+  .frames p { font-size:44px; }
+  .tiny { font-size:18px; color:var(--ink-soft); }
 </style>
 </head>
 <body>
@@ -108,6 +116,114 @@
     <aside class="notes">deck-kit adds the browser's controls (play, seek, volume, mute) to every video and audio, ignores autoplay, and stops media when you leave the slide.</aside>
   </section>
 
+  <section class="slide" id="steps" data-title="Steps" data-sec="Features" data-min="1">
+    <div class="eyebrow">deck-kit · interactive features</div>
+    <h2>Reveal one idea at a time</h2>
+    <ul>
+      <li data-step>Press → : the next point appears</li>
+      <li data-step>Press ← : it hides again</li>
+      <li data-step="3">Same number → appear together</li>
+      <li data-step="3">(like this one)</li>
+    </ul>
+    <p data-step="4" class="eyebrow">Printing and exporting show every step.</p>
+    <aside class="notes">Four steps on this slide; the presenter view shows "step n/4".</aside>
+  </section>
+
+  <section class="slide" id="maths" data-title="Maths" data-sec="Features" data-min="1">
+    <h2>Bayes, in one line</h2>
+    <p>The posterior is $p(x \mid z) \propto p(z \mid x)\,p(x)$, and for Gaussians the fused variance is</p>
+    $$\sigma^2 = \frac{\sigma_A^2\,\sigma_B^2}{\sigma_A^2 + \sigma_B^2}$$
+    <p>Prices stay text: the sensor costs $5 and the kit $10, US$5-$6.</p>
+    <aside class="notes">Maths is plain $…$ in the HTML; deck-kit renders it with KaTeX. The price sentence shows that dollar amounts stay text.</aside>
+  </section>
+
+  <section class="slide" id="code" data-title="Code" data-sec="Features" data-min="1">
+    <h2>Code, line by line</h2>
+    <pre data-lines="1-2|4|5-6"><code class="language-python">def kalman_step(x, P, z, R):
+    # predict
+    x_pred, P_pred = x, P + Q
+    K = P_pred / (P_pred + R)        # gain
+    x_new = x_pred + K * (z - x_pred)
+    return x_new, (1 - K) * P_pred</code></pre>
+    <p class="eyebrow">→ highlights lines 1–2, then 4, then 5–6. Hover the block to copy it.</p>
+    <aside class="notes">Press → three times: lines 1–2, then 4, then 5–6 light up. data-lines on the &lt;pre&gt; sets the segments.</aside>
+  </section>
+
+  <section class="slide" id="quiz" data-title="Quick quiz" data-sec="Features" data-min="1">
+    <h2>Which variance is smaller?</h2>
+    <div data-quiz>
+      <ul class="quiz">
+        <li data-option>The prediction's</li>
+        <li data-option>The sensor's</li>
+        <li data-option data-correct>The fused estimate's</li>
+        <li data-option>It depends on the gain</li>
+      </ul>
+      <p data-explain class="explain">Fusing two Gaussians always gives a narrower one than either input.</p>
+    </div>
+    <aside class="notes">Ask the room first, then click an answer. Clicking it again clears it; leaving the slide clears it too.</aside>
+  </section>
+
+  <section class="slide" id="charts" data-title="Charts" data-sec="Features" data-min="1">
+    <h2>Charts from data</h2>
+    <div class="row">
+      <div class="card" style="flex:1"><canvas data-chart='{"type":"bar","labels":["Q1","Q2","Q3","Q4"],"series":[{"name":"2025","data":[12,19,15,24]},{"name":"2026","data":[16,22,21,30]}],"values":true}'></canvas></div>
+      <div class="card" style="flex:1">
+        <table data-chart="line" data-chart-height="100%">
+          <thead><tr><th>Step</th><th>Error</th></tr></thead>
+          <tbody><tr><td>1</td><td>9.1</td></tr><tr><td>2</td><td>5.2</td></tr><tr><td>3</td><td>3.0</td></tr><tr><td>4</td><td>1.9</td></tr><tr><td>5</td><td>1.4</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <aside class="notes">Left: JSON in data-chart. Right: drawn straight from a table, which stays in the page for screen readers.</aside>
+  </section>
+
+  <section class="slide" id="stepper" data-title="Simulations" data-sec="Features" data-min="1">
+    <h2>Play, pause, step</h2>
+    <div class="row">
+      <div class="card" style="flex:1;display:flex;flex-direction:column"><canvas id="walk" style="flex:1;min-height:0"></canvas></div>
+      <div class="card frames" style="width:620px" data-stepper data-interval="1100">
+        <p data-frame>1 · Predict the state</p>
+        <p data-frame>2 · Measure</p>
+        <p data-frame>3 · Weigh by the gain</p>
+        <p data-frame>4 · Update and repeat</p>
+      </div>
+    </div>
+    <aside class="notes">Press ▶ on the walk, or step the four frames on the right one at a time with ⏭.</aside>
+  </section>
+
+  <section class="slide" id="compare" data-title="Before and after" data-sec="Features" data-min="1">
+    <h2>Before / after</h2>
+    <div data-compare="35" style="flex:1;min-height:0;border-radius:20px">
+      <img src="before.svg" alt="Raw sensor image" data-label="Before">
+      <img src="after.svg" alt="Filtered image" data-label="After">
+    </div>
+    <aside class="notes">Drag anywhere on the picture. data-compare="35" sets where the divider starts.</aside>
+  </section>
+
+  <section class="slide" id="hotspots" data-title="Hotspots" data-sec="Features" data-min="1">
+    <h2>Click the numbers</h2>
+    <div data-hotspots style="width:1100px">
+      <img src="map.svg" alt="Filter loop" style="width:100%;display:block">
+      <p data-hotspot="16%,50%">Noisy readings come in here.</p>
+      <p data-hotspot="50%,29%">The model predicts the next state.</p>
+      <p data-hotspot="84%,50%">The estimate is better than either input.</p>
+    </div>
+    <aside class="notes">Click the numbers. Each bubble is an ordinary &lt;p data-hotspot="x%,y%"&gt; in the HTML.</aside>
+  </section>
+
+  <section class="slide" id="qr" data-title="QR code" data-sec="Features" data-min="1" style="align-items:center;justify-content:center;text-align:center">
+    <h2>Scan for the slides</h2>
+    <div data-qr="https://github.com/awun0105/deck-kit" style="width:360px"></div>
+    <p class="eyebrow">github.com/awun0105/deck-kit</p>
+    <aside class="notes">Leave this up while people scan. An empty data-qr uses the deck's own address once it is online.</aside>
+  </section>
+
+  <section class="slide" id="zoom" data-title="Zoom" data-sec="Features" data-min="1">
+    <h2>Press <kbd>Z</kbd> and drag a box</h2>
+    <p>Small print the back row can't read: <span class="tiny">the gain K balances how much we trust the model against the sensor; K → 1 trusts the sensor.</span></p>
+    <aside class="notes">Press Z and drag a box around the small print; Esc zooms back out. From the presenter view, drag over the current preview.</aside>
+  </section>
+
   <section class="slide" data-title="Thanks" data-sec="Wrap-up" data-min="1">
     <h1>Thank you.</h1>
     <p>Print → Save as PDF gives one slide per page, canvases included.</p>
@@ -161,6 +277,22 @@
       tick() { pts.push(sample()); if (pts.length > 300) pts.shift(); draw(); },
     });
   })();
+</script>
+<script>
+  // A deterministic random walk driven by DeckKit.stepper.
+  const cv = document.getElementById('walk');
+  let pts = [];
+  const rnd = (k) => { const x = Math.sin(k * 12.9898) * 43758.5453; return x - Math.floor(x); };
+  const draw = () => {
+    const p = DeckKit.plot(cv, { x: [0, 60], y: [-12, 12] }).clear().axes({ xlabel: 'step' });
+    if (pts.length) p.line(pts, { color: 0 }).points([pts[pts.length - 1]], { color: 1, r: 7 });
+  };
+  DeckKit.stepper(cv, {
+    frames: 60, interval: 120,
+    reset() { pts = [[0, 0]]; draw(); },
+    step(k) { const y = pts[pts.length - 1][1] + (rnd(k) - 0.5) * 3; pts.push([k, Math.max(-12, Math.min(12, y))]); draw(); },
+  });
+  DeckKit.widget(cv, { draw });
 </script>
 </body>
 </html>

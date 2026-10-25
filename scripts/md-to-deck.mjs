@@ -39,7 +39,8 @@
  *   $x^2$, $$\sum x$$            maths (KaTeX, rendered by deck-kit)
  *   ```python {1-2|4}            highlighted code; {…} steps through those lines on →
  *   ```chart  + JSON              bar / line / pie chart ({"type":"bar","labels":[…],"series":[…]})
- *   - [x] right / - [ ] wrong     multiple-choice quiz (click an option to check it)
+ *   - (x) right / - ( ) wrong     multiple-choice quiz (click an option to check it)
+ *   - [x] done / - [ ] to do      task list (ticked / unticked boxes)
  * Override any slide with <!-- layout: cover|section|bullets|columns|quote|stats|image -->.
  * Other per-slide keys: sec, min, title, steps (steps: true → list items appear
  * one per →). Raw HTML lines pass through untouched (data-step, data-compare,
@@ -224,12 +225,15 @@ function blocks(lines) {
         items.push([depth, inline(lines[i].replace(/^\s*([-*+]|\d+[.)])\s+/, ''))]);
       }
       const tag = ordered ? 'ol' : 'ul';
-      // - [x] right / - [ ] wrong → a quiz.
-      const box = /^\[( |x|X)\]\s/;
-      if (items.length > 1 && items.every(([d, t]) => d === 0 && box.test(t))) {
-        html.push(`<${tag} class="quiz" data-quiz>${items.map(([, t]) => `<li data-option${/^\[[xX]\]/.test(t) ? ' data-correct' : ''}>${t.replace(box, '')}</li>`).join('')}</${tag}>`);
+      // - (x) right / - ( ) wrong → a quiz (round, like radio buttons).
+      const radio = /^\(( |x|X)\)\s/;
+      if (items.length > 1 && items.every(([d, t]) => d === 0 && radio.test(t))) {
+        html.push(`<${tag} class="quiz" data-quiz>${items.map(([, t]) => `<li data-option${/^\([xX]\)/.test(t) ? ' data-correct' : ''}>${t.replace(radio, '')}</li>`).join('')}</${tag}>`);
         continue;
       }
+      // - [x] done / - [ ] to do → a task list.
+      const box = /^\[( |x|X)\]\s/;
+      items.forEach((it) => { if (box.test(it[1])) it[1] = `<span class="task${/^\[[xX]\]/.test(it[1]) ? ' done' : ''}"></span>${it[1].replace(box, '')}`; });
       let h = `<${tag}>`;
       items.forEach(([d, t], k) => {
         const next = items[k + 1];
@@ -407,6 +411,10 @@ ${fontLink}
   canvas.chart { width: 100%; height: 600px; }
   .quiz { list-style: none; padding: 0; gap: 16px; }
   .quiz li { background: var(--card); border: 2px solid var(--line); border-radius: 14px; padding: 16px 28px; }
+  li:has(> .task) { list-style: none; margin-left: -1.1em; }
+  .task { display: inline-block; width: .8em; height: .8em; margin-right: .45em; border: 3px solid var(--accent); border-radius: 6px; vertical-align: -.05em; position: relative; }
+  .task.done { background: var(--accent); }
+  .task.done::after { content: ""; position: absolute; left: .22em; top: .02em; width: .2em; height: .42em; border: solid var(--bg); border-width: 0 .1em .1em 0; transform: rotate(45deg); }
 </style>
 </head>
 <body>
