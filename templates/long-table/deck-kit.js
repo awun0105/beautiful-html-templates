@@ -47,6 +47,8 @@
   // Windows opened by the presenter view: ?dk=presenter (notes screen) and
   // ?dk=mirror (slide previews inside it).
   const ROLE = (new URLSearchParams(location.search).get('dk') || 'main').toLowerCase();
+  // A copy published by deploy.mjs: no file to save into, so no editing or export tools.
+  const PUBLISHED = !!document.querySelector('meta[name="deck-kit-published"]');
 
   const STR = {
     en: {
@@ -73,6 +75,9 @@
       fPdf: 'PDF', fCompact: 'Small PDF', fPng: 'PNG', fHandout: 'Handout', fPptx: 'PPTX (images)', fPptxEd: 'PPTX (editable)',
       previewOpt: 'Preview link', nameLbl: 'Name', copyCmd: 'Copy command', pickFormat: 'Tick at least one format',
       cmdCopied: 'Command copied — paste it in a terminal or send it to your agent',
+      stale: 'The deck file changed on disk after you opened it (the agent may have edited it). Reload the page and save again — your changes are kept as a draft.',
+      editPartial: 'Saved {n} change(s) to {f}; {m} element(s) were created by the template\'s script and are not in the file, so they could not be saved',
+      keepNotes: 'Include speaker notes',
       shareNote: 'Exports and deploys run with Node on your computer; deploying makes the deck public.',
       keys: [['← → 1–9', 'Navigate'], ['P', 'Presenter view (2nd window)'], ['N', 'Speaker notes'], ['M', 'Slide menu'],
         ['T', 'Talk timer (Shift+T reset)'], ['B / W', 'Black / white screen'], ['L', 'Laser pointer'],
@@ -102,6 +107,9 @@
       fPdf: 'PDF', fCompact: 'PDF nén', fPng: 'PNG', fHandout: 'Handout', fPptx: 'PPTX ảnh', fPptxEd: 'PPTX sửa được',
       previewOpt: 'Bản xem thử', nameLbl: 'Tên', copyCmd: 'Chép lệnh', pickFormat: 'Hãy tick ít nhất một định dạng',
       cmdCopied: 'Đã chép lệnh — dán vào terminal hoặc gửi cho agent chạy',
+      stale: 'File deck đã thay đổi trên ổ đĩa sau khi bạn mở (có thể agent vừa sửa). Hãy tải lại trang rồi lưu lại — thay đổi của bạn vẫn được giữ làm bản nháp.',
+      editPartial: 'Đã lưu {n} thay đổi vào {f}; {m} phần tử do script của mẫu tự tạo nên không có trong file, không lưu được',
+      keepNotes: 'Kèm ghi chú người nói',
       shareNote: 'Xuất file và deploy chạy bằng Node trên máy bạn; deploy sẽ công khai deck.',
       keys: [['← → 1–9', 'Chuyển slide'], ['P', 'Màn hình người trình bày (cửa sổ 2)'], ['N', 'Ghi chú người nói'], ['M', 'Menu các slide'],
         ['T', 'Đồng hồ (Shift+T đặt lại)'], ['B / W', 'Màn hình đen / trắng'], ['L', 'Con trỏ laser'],
@@ -426,6 +434,7 @@
       <div class="dk-row"><b>${esc(L.deploy)}</b><div>
         <div class="dk-opts">${['vercel', 'cloudflare', 'github'].map((t, i) => `<label><input type="radio" name="dk-to" value="${t}"${i ? '' : ' checked'}>${t === 'vercel' ? 'Vercel' : t === 'cloudflare' ? 'Cloudflare' : 'GitHub'}</label>`).join('')}</div>
         <div class="dk-opts" style="margin-top:8px"><label><input type="checkbox" data-o="preview">${esc(L.previewOpt)}</label>
+          <label><input type="checkbox" data-o="notes">${esc(L.keepNotes)}</label>
           <label>${esc(L.nameLbl)} <input type="text" data-o="name" spellcheck="false"></label></div>
         <div class="dk-opts" style="margin-top:10px"><button type="button" data-a="deploy">${esc(L.copyCmd)}</button></div><code data-c="deploy"></code></div></div>
       <div class="dk-note">${esc(L.shareNote)}</div>`);
@@ -980,7 +989,7 @@
       <div class="dk-side">
         <div><div class="dk-lbl">${esc(L.next)}</div><div class="dk-frame dk-nx"><iframe title="next"></iframe><div class="dk-endcard">${esc(L.end)}</div></div></div>
         <div class="dk-nrow"><div class="dk-lbl">${esc(L.notes)} <span class="dk-meta"></span></div>
-          <span class="dk-nstat"></span><button data-n="edit">${esc(L.edit)}</button><button data-n="save">${esc(L.saveFile)}</button></div>
+          <span class="dk-nstat"></span>${PUBLISHED ? '' : `<button data-n="edit">${esc(L.edit)}</button><button data-n="save">${esc(L.saveFile)}</button>`}</div>
         <div class="dk-pnotes"><div class="dk-tx"></div></div>
       </div>
       <div class="dk-bar"><button data-a="prev">◀</button><button data-a="next">▶</button><button data-a="black">B</button>
@@ -998,8 +1007,10 @@
       notesBox: box.querySelector('.dk-pnotes'), nstat: box.querySelector('.dk-nstat'), editBtn: box.querySelector('[data-n="edit"]'),
     };
     pv.clock.addEventListener('click', () => timerCmd('pause'));
-    pv.editBtn.addEventListener('click', () => setEditing(!editing));
-    box.querySelector('[data-n="save"]').addEventListener('click', saveNotesToFile);
+    if (pv.editBtn) {
+      pv.editBtn.addEventListener('click', () => setEditing(!editing));
+      box.querySelector('[data-n="save"]').addEventListener('click', saveNotesToFile);
+    }
     let typingTimer = null;
     pv.notes.addEventListener('input', () => {
       clearTimeout(typingTimer);
@@ -1069,6 +1080,7 @@
       if (m.dk === 'reveal') applyReveal(m);
       if (m.dk === 'notes') { editNotes(m.slide, m.html); if (m.slide === cur) renderNotes(); }
       if (m.dk === 'notes-saved') { notesEdits.clear(); clearDraft(); }
+      if (m.dk === 'file-saved') lastWrite = Math.max(lastWrite, m.at || Date.now());
     } else if (ROLE === 'presenter') {
       const fromPreview = pv && (e.source === pv.fc.contentWindow || e.source === pv.fn.contentWindow);
       if (fromPreview) {
@@ -1078,6 +1090,7 @@
         return;
       }
       if (e.source !== window.opener) return;
+      if (m.dk === 'file-saved') lastWrite = Math.max(lastWrite, m.at || Date.now());
       if (m.dk === 'state') {
         pv.msg.textContent = '';
         pv.heard();
@@ -1110,6 +1123,7 @@
   const DRAFT = 'deck-kit-notes:' + location.pathname;
   let editing = false;
   let fileHandle = null;
+  let lastWrite = 0;        // when this deck (either window) last wrote the file
 
   function setNotesDom(root, list, i, html) {
     const s = list[i];
@@ -1258,10 +1272,19 @@
     let perm = await fileHandle.queryPermission({ mode: 'readwrite' });
     if (perm !== 'granted') perm = await fileHandle.requestPermission({ mode: 'readwrite' });
     if (perm !== 'granted') throw new Error('permission denied');
-    const out = transform(await (await fileHandle.getFile()).text());
+    const file = await fileHandle.getFile();
+    // Refuse to patch a file that changed after this page loaded it (e.g. the
+    // agent edited it): element positions may no longer match.
+    if (file.lastModified > Math.max(performance.timeOrigin, lastWrite) + 2000) {
+      const e = new Error(L.stale); e.stale = true; throw e;
+    }
+    const out = transform(await file.text());
     const w = await fileHandle.createWritable();
     await w.write(out);
     await w.close();
+    lastWrite = Math.max(Date.now(), (await fileHandle.getFile()).lastModified);
+    // The other window (presenter ⇄ audience) must not mistake this save for an outside edit.
+    send(ROLE === 'presenter' ? window.opener : presenterWin, { dk: 'file-saved', at: lastWrite });
     return fileHandle.name;
   }
   function download(name, data) {
@@ -1282,6 +1305,7 @@
       return;
     } catch (e) {
       if (e.name === 'AbortError') { renderNoteStatus(); return; }
+      if (e.stale) { renderNoteStatus(L.stale); return; }
       if (!e.fallback) { renderNoteStatus(fmt(L.saveFailed, { e: e.message })); if (!/slides/.test(e.message)) return; }
     }
     // No File System Access (Firefox, Safari): hand over a notes.json to merge.
@@ -1380,11 +1404,14 @@
   }
   /** Apply visual edits [{slide, path, tag, text, style: {prop: value}, html?}]
    *  to an HTML source string, touching only the edited tags. */
-  function patchEdits(src, edits, count = slides.length) {
+  function patchEdits(src, edits, count = slides.length) { return patchEditsReport(src, edits, count).out; }
+  /** Like patchEdits, but skips elements that aren't in the source (made by a
+   *  template's script at runtime) and reports them instead of failing. */
+  function patchEditsReport(src, edits, count = slides.length) {
     const ix = sourceIndex(src, count);
     let found = edits.map((e) => ({ e, t: locateIn(ix, e.slide, e.path, e.tag, e.text) }));
-    const lost = found.filter((x) => !x.t);
-    if (lost.length) throw new Error(`${lost.length} edited element(s) not found in the file (${lost.map((x) => '<' + x.e.tag + '>').join(', ')})`);
+    const skipped = found.filter((x) => !x.t).map((x) => x.e);
+    found = found.filter((x) => x.t);
     // A rewritten element already contains its children's state.
     const rewritten = found.filter((x) => x.e.html != null && x.t.close >= 0);
     found = found.filter((x) => !rewritten.some((r) => r !== x && x.t.start > r.t.openEnd && x.t.start < r.t.close));
@@ -1393,7 +1420,7 @@
       if (e.html != null && t.close >= 0) out = out.slice(0, t.openEnd) + e.html + out.slice(t.close);
       if (e.style && Object.keys(e.style).length) out = out.slice(0, t.start) + setStyleProps(out.slice(t.start, t.openEnd), e.style) + out.slice(t.openEnd);
     });
-    return out;
+    return { out, skipped };
   }
   async function readSource() {
     if (/^https?:/.test(location.protocol)) { try { return await (await fetch(location.href.replace(/#.*$/, ''), { cache: 'no-store' })).text(); } catch (e) {} }
@@ -1501,13 +1528,16 @@
     const edits = pendingEdits();
     if (!edits.length) return;
     try {
-      const name = await writeDeck((src) => patchEdits(src, edits));
+      let skipped = [];
+      const name = await writeDeck((src) => { const r = patchEditsReport(src, edits); skipped = r.skipped; return r.out; });
       ed.touched.forEach((info, e) => { info.orig = snapshot(e); info.htmlEdited = false; info.text = e.textContent; });
       ed.undo = []; ed.redo = [];
       try { localStorage.removeItem(EDRAFT); } catch (x) {}
-      flash(fmt(L.editSaved, { n: edits.length, f: name }), 3500);
+      flash(skipped.length ? fmt(L.editPartial, { n: edits.length - skipped.length, f: name, m: skipped.length })
+        : fmt(L.editSaved, { n: edits.length, f: name }), skipped.length ? 8000 : 3500);
     } catch (e) {
       if (e.name === 'AbortError') { flash(L.editNotSaved, 3500); return; }
+      if (e.stale) { flash(L.stale, 9000); return; }
       if (e.fallback) { download('edits.json', { deck: deckName(), slides: slides.length, edits }); flash(L.editDownloaded, 6000); return; }
       flash(fmt(L.saveFailed, { e: e.message }), 6000);
     }
@@ -1766,12 +1796,14 @@
   function toolsDir() {
     const meta = document.querySelector('meta[name="deck-kit-tools"]');
     if (meta && meta.content) return meta.content.replace(/\/$/, '');
-    const path = decodeURIComponent(location.pathname);
+    const path = localPath();
     const k = path.indexOf('/beautiful-html-templates/');
     if (location.protocol === 'file:' && k >= 0) return path.slice(0, k) + '/beautiful-html-templates/scripts';
     return '$HOME/.agents/skills/beautiful-html-templates/scripts';
   }
-  const deckPath = () => (location.protocol === 'file:' ? decodeURIComponent(location.pathname) : location.href.replace(/[?#].*$/, ''));
+  // file:///C:/x.html has pathname /C:/x.html on Windows; drop the leading slash there.
+  const localPath = () => decodeURIComponent(location.pathname).replace(/^\/([A-Za-z]:\/)/, '$1');
+  const deckPath = () => (location.protocol === 'file:' ? localPath() : location.href.replace(/[?#].*$/, ''));
   /** Same link name rule as deploy.mjs: the folder for index.html/template.html, else the file name. */
   function defaultName() {
     const parts = decodeURIComponent(location.pathname).split('/').filter(Boolean);
@@ -1790,7 +1822,8 @@
     const to = (box.querySelector('input[name="dk-to"]:checked') || {}).value || 'vercel';
     const name = box.querySelector('[data-o="name"]').value.trim();
     const preview = box.querySelector('[data-o="preview"]').checked;
-    return `node ${q(toolsDir() + '/deploy.mjs')} ${q(deckPath())} --to=${to}${name ? ` --name=${q(name)}` : ''}${preview ? ' --preview' : ''}`;
+    const notes = box.querySelector('[data-o="notes"]').checked;
+    return `node ${q(toolsDir() + '/deploy.mjs')} ${q(deckPath())} --to=${to}${name ? ` --name=${q(name)}` : ''}${preview ? ' --preview' : ''}${notes ? ' --keep-notes' : ''}`;
   }
   function renderShare() {
     ['export', 'deploy'].forEach((k) => { ui.share.querySelector(`[data-c="${k}"]`).textContent = shareCommand(k) || L.pickFormat; });
@@ -1893,9 +1926,9 @@
       case 'n': case 'N': if (ROLE === 'main') show('notes'); break;
       case 'm': case 'M': show('menu'); break;
       case 'p': case 'P': if (ROLE === 'main') openPresenter(); break;
-      case 'e': case 'E': if (ROLE !== 'main') return false; enterEdit(); break;
-      case 'k': case 'K': if (ROLE !== 'main') return false; startPick(); break;
-      case 'x': case 'X': if (ROLE !== 'main') return false; renderShare(); show('share'); break;
+      case 'e': case 'E': if (ROLE !== 'main' || PUBLISHED) return false; enterEdit(); break;
+      case 'k': case 'K': if (ROLE !== 'main' || PUBLISHED) return false; startPick(); break;
+      case 'x': case 'X': if (ROLE !== 'main' || PUBLISHED) return false; renderShare(); show('share'); break;
       case 't': if (ROLE === 'main') { show('tmr'); renderTimer(); } break;
       case 'T': timerCmd('reset'); flash(L.elapsed + ' 0:00'); break;
       case 'f': case 'F': toggleFullscreen(); break;
@@ -2203,6 +2236,7 @@
     cleanupPrint,
     patchNotes,
     patchEdits,
+    patchEditsReport,
     edit: { enter: () => enterEdit(), exit: () => exitEdit(), get on() { return ed.on; }, pending: () => pendingEdits() },
     describe: (node) => describe(node),
     /** Visit every slide (so on-entry content renders), then open the print dialog. */
@@ -2240,6 +2274,10 @@
     if (ROLE === 'mirror') {
       // Preview inside the presenter window: slides only, no chrome, no input.
       ui.host.style.display = 'none';
+      // Previews must stay silent: only the audience screen plays sound.
+      const mute = () => document.querySelectorAll('video, audio').forEach((m) => { m.muted = true; });
+      mute();
+      new MutationObserver(mute).observe(document.body, { childList: true, subtree: true });
       const m = (location.hash || '').match(/^#(\d+)$/);
       pinned = m ? Math.max(0, Math.min(slides.length - 1, +m[1] - 1)) : 0;
       if (!adapter.ownsHash && pinned > 0) goto(pinned);
@@ -2286,7 +2324,7 @@
       if (!localStorage.getItem('deck-kit-hint')) { flash(L.helpHint, 3500); localStorage.setItem('deck-kit-hint', '1'); }
       const restored = loadDraft();
       if (restored) { renderNotes(); flash(fmt(L.restored, { n: restored }), 5000); }
-      const restoredEdits = loadEditDraft();
+      const restoredEdits = PUBLISHED ? 0 : loadEditDraft();
       if (restoredEdits) flash(fmt(L.editRestored, { n: restoredEdits }), 6000);
     } catch (e) {}
 

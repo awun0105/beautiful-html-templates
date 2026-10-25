@@ -10,6 +10,8 @@
  *                        (default: <your-login>/slides, created public if missing)
  *   --dry-run            build and show the commands without publishing
  *   --force              publish even if the name belongs to a different deck
+ *   --keep-notes         publish the speaker notes too (left out by default —
+ *                        anyone with the link could read them)
  *
  * Overwrite guard: each deck has an id (a hash of its real file path — the
  * path itself is never published). The id is stamped into the published file
@@ -48,7 +50,7 @@ const opt = Object.fromEntries(args.filter((a) => a.startsWith('--')).map((a) =>
 const input = args.find((a) => !a.startsWith('--'));
 const to = String(opt.to || '').toLowerCase();
 if (!input || !/^(vercel|cloudflare|github)$/.test(to)) {
-  console.error('Usage: node scripts/deploy.mjs <deck.html> --to=vercel|cloudflare|github [--name=…] [--preview] [--repo=owner/slides] [--dry-run] [--force]');
+  console.error('Usage: node scripts/deploy.mjs <deck.html> --to=vercel|cloudflare|github [--name=…] [--preview] [--repo=owner/slides] [--dry-run] [--force] [--keep-notes]');
   process.exit(1);
 }
 const deck = resolve(input);
@@ -117,11 +119,24 @@ console.log(`Building ${name} …`);
 const b = spawnSync(process.execPath, [resolve(root, 'scripts/bundle.mjs'), deck, join(dist, 'index.html')], { encoding: 'utf8' });
 if (b.status !== 0) { console.error(b.stderr || b.stdout); process.exit(1); }
 console.log('  ' + b.stdout.trim().split('\n')[0]);
-// Stamp the deck id (not its path) so a later deploy can recognise the live copy.
+// Stamp the deck id (not its path) so a later deploy can recognise the live
+// copy, mark it as published (deck-kit hides edit / export tools there), and
+// leave the speaker notes out unless asked.
 {
   const f = join(dist, 'index.html');
-  const html = readFileSync(f, 'utf8');
-  writeFileSync(f, html.replace(/<head([^>]*)>/i, `<head$1>\n<meta name="deck-kit-id" content="${deckId}">`));
+  let html = readFileSync(f, 'utf8');
+  let stripped = 0;
+  if (!opt['keep-notes']) {
+    // Only touch markup: inlined scripts (deck-kit itself) contain "<aside class=notes>" in strings.
+    html = html.split(/(<script\b[\s\S]*?<\/script>|<style\b[\s\S]*?<\/style>)/i).map((part) => {
+      if (/^<script\b[^>]*id=["']speaker-notes["']/i.test(part)) { stripped++; return part.replace(/(<script[^>]*>)[\s\S]*?(<\/script>)/i, '$1[]$2'); }
+      if (/^<(script|style)\b/i.test(part)) return part;
+      return part.replace(/[ \t]*<aside\b[^>]*\sclass\s*=\s*["'][^"']*\bnotes\b[^"']*["'][^>]*>[\s\S]*?<\/aside>[ \t]*\n?/gi, () => { stripped++; return ''; });
+    }).join('');
+  }
+  html = html.replace(/<head([^>]*)>/i, `<head$1>\n<meta name="deck-kit-id" content="${deckId}">\n<meta name="deck-kit-published" content="1">`);
+  writeFileSync(f, html);
+  console.log(opt['keep-notes'] ? '  Speaker notes included (--keep-notes).' : `  Speaker notes left out${stripped ? '' : ' (none found)'} — add --keep-notes to publish them.`);
 }
 if (/Still remote/.test(b.stdout)) console.log('  ' + b.stdout.trim().split('\n').slice(1).join('\n  '));
 

@@ -94,6 +94,8 @@ const core = (await read('docProps/core.xml')) || '';
 const docTitle = decode((core.match(/<dc:title>([\s\S]*?)<\/dc:title>/) || ['', ''])[1]).trim();
 
 let mediaCount = 0;
+const skippedKinds = { chart: 0, smartart: 0, media: 0 };
+const skippedSlides = new Set();
 const outSlides = [];
 for (const [n, part] of order.entries()) {
   const xml = await read(part);
@@ -140,6 +142,12 @@ for (const [n, part] of order.entries()) {
     const rows = blocks(tbl, 'a:tr').map(({ xml: tr }) => blocks(tr, 'a:tc').map(({ xml: tc }) => paragraphs(tc, false).map((p) => p.text).join(' ').replace(/\|/g, '\\|')));
     if (rows.length) items.push({ kind: 'table', rows, ...position(gf) });
   }
+  // Things that don't come across: charts, SmartArt diagrams, video / audio.
+  const gfs = blocks(xml, 'p:graphicFrame').map((g) => g.xml);
+  skippedKinds.chart += gfs.filter((g) => /drawingml\/2006\/chart/.test(g)).length;
+  skippedKinds.smartart += gfs.filter((g) => /drawingml\/2006\/diagram/.test(g)).length;
+  skippedKinds.media += (xml.match(/<a:(videoFile|audioFile)\b/g) || []).length;
+  if (gfs.some((g) => /drawingml\/2006\/(chart|diagram)/.test(g)) || /<a:(videoFile|audioFile)\b/.test(xml)) skippedSlides.add(outSlides.length + 1);
   // Reading order: top to bottom, then left to right.
   items.sort((a, b) => (Math.abs(a.y - b.y) > slideH * 0.04 ? a.y - b.y : a.x - b.x));
 
@@ -201,4 +209,6 @@ const res = execFileSync(process.execPath, [resolve(root, 'scripts/md-to-deck.mj
 const withNotes = outSlides.filter((s) => s.notes).length;
 console.log(`Imported ${outSlides.length} slides from ${basename(pptxPath)} (${mediaCount} pictures, ${withNotes} with notes).`);
 console.log(`Outline: ${mdPath}`);
+const skippedList = [skippedKinds.chart && `${skippedKinds.chart} chart(s)`, skippedKinds.smartart && `${skippedKinds.smartart} SmartArt diagram(s)`, skippedKinds.media && `${skippedKinds.media} video/audio clip(s)`].filter(Boolean);
+if (skippedList.length) console.log(`Not imported: ${skippedList.join(', ')} on slide(s) ${[...skippedSlides].join(', ')} — rebuild them (charts: DeckKit.plot or an image).`);
 console.log(res.trim());

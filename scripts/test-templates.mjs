@@ -307,6 +307,63 @@ if (!only || only === 'tools') {
     ok('imported deck boots with notes', (await pg.evaluate(() => DeckKit.length)) === 6 && /GPS story/.test(await pg.evaluate(() => DeckKit.notesOf(0))));
     await pg.close();
   }
+  // A deployed copy: no notes, no edit / export tools.
+  {
+    let built = '';
+    try { built = execSync(`node "${resolve(root, 'scripts/deploy.mjs')}" "${resolve(root, 'examples/deck-kit-demo/index.html')}" --to=vercel --dry-run`, { encoding: 'utf8' }); } catch (e) { built = String(e.stdout); }
+    const file = (built.match(/Built file: (\S+)/) || [])[1];
+    if (file) {
+      const pub = await openDeck(browser, file, { width: 1280, height: 720 });
+      await pub.keyboard.press('x'); await pub.keyboard.press('e'); await sleep(200);
+      const st = await pub.evaluate(() => ({ share: document.querySelector('#deck-kit').shadowRoot.querySelector('.dk-share').classList.contains('dk-show'), edit: DeckKit.edit.on, notes: DeckKit.slides.some((s, i) => DeckKit.notesOf(i)) }));
+      ok('published copy: speaker notes left out, E and X disabled', !st.share && !st.edit && !st.notes, JSON.stringify(st));
+      await pub.close();
+    } else ok('published copy built', false, built.slice(0, 120));
+  }
+  // Saving refuses a file that changed after the page loaded it.
+  {
+    const demoFile = resolve(root, 'examples/deck-kit-demo/index.html');
+    const sp = await openDeck(browser, demoFile, { width: 1280, height: 720 });
+    await sp.evaluate((src) => {
+      window.__written = null;
+      window.showOpenFilePicker = async () => [{ name: 'index.html', queryPermission: async () => 'granted',
+        getFile: async () => ({ lastModified: Date.now() + 60000, text: async () => src }), createWritable: async () => ({ write: async (t) => { window.__written = t; }, close: async () => {} }) }];
+    }, readFileSync(demoFile, 'utf8'));
+    await sp.evaluate(() => DeckKit.goTo(1)); await sleep(500);
+    const h = await sp.evaluate(() => { const r = DeckKit.slides[1].querySelector('h2').getBoundingClientRect(); return { x: r.left + 15, y: r.top + r.height / 2 }; });
+    await sp.keyboard.press('e'); await sp.mouse.move(h.x, h.y); await sp.mouse.down(); await sp.mouse.move(h.x + 30, h.y, { steps: 3 }); await sp.mouse.up();
+    await sp.keyboard.press('e'); await sleep(600);
+    const st = await sp.evaluate(() => ({ written: window.__written, toast: document.querySelector('#deck-kit').shadowRoot.querySelector('.dk-toast').textContent }));
+    ok('save refuses a file changed on disk since opening', st.written === null && /changed on disk/.test(st.toast), st.toast.slice(0, 60));
+    await sp.evaluate(() => localStorage.clear());
+    await sp.close();
+  }
+  // Elements a template creates at runtime are skipped (reported), the rest is saved.
+  {
+    const f = resolve(root, 'templates/8-bit-orbit/template.html');
+    const src = readFileSync(f, 'utf8');
+    const pg = await openDeck(browser, f, { width: 1280, height: 720 });
+    await pg.evaluate((src) => {
+      window.__written = null;
+      window.showOpenFilePicker = async () => [{ name: 'template.html', queryPermission: async () => 'granted',
+        getFile: async () => ({ text: async () => src }), createWritable: async () => ({ write: async (t) => { window.__written = t; }, close: async () => {} }) }];
+    }, src);
+    // One element that exists in the file (a heading) and one made at runtime.
+    const out = await pg.evaluate((src) => {
+      const s = DeckKit.slides[0];
+      const made = document.createElement('div');
+      made.className = 'made-by-script';
+      made.textContent = 'runtime';
+      s.appendChild(made);
+      const h = s.querySelector('h1, h2');
+      const pathOf = (n) => { const p = []; for (let e = n; e && e !== s; e = e.parentElement) p.unshift([...e.parentElement.children].indexOf(e)); return p; };
+      const edits = [made, h].map((e) => ({ slide: 0, path: pathOf(e), tag: e.tagName.toLowerCase(), text: e.textContent, style: { translate: '5px 5px' } }));
+      return DeckKit.patchEditsReport(src, edits);
+    }, src);
+    const res = { star: true, h: true };
+    ok('runtime-made elements are skipped, the rest saved', res.star && res.h && out.skipped.length === 1 && /translate: 5px 5px/.test(out.out), `skipped ${out.skipped.length}`);
+    await pg.close();
+  }
   let dry = '';
   try { dry = execSync(`node "${resolve(root, 'scripts/deploy.mjs')}" "${resolve(root, 'examples/deck-kit-demo/index.html')}" --to=cloudflare --name="Bộ lọc demo" --preview --dry-run`, { encoding: 'utf8' }); } catch (e) { dry = String(e.stdout || e.message); }
   // Overwrite guard, exercised with a fake npx (nothing reaches Cloudflare).
