@@ -62,11 +62,16 @@
       edit: '✎ Edit', done: '✓ Done', saveFile: '💾 Save to file', unsaved: '{n} unsaved', saved: 'Notes saved to {f}',
       nothing: 'No note changes to save', restored: 'Restored {n} unsaved note edit(s) — press P, then Save',
       otherFile: 'You picked "{a}" but this deck is "{b}". Write to it anyway?',
-      downloaded: 'Saved notes.json — merge it with: node scripts/apply-notes.mjs <deck.html> notes.json',
+      downloaded: 'Saved notes.json — merge it with: node scripts/apply-changes.mjs <deck.html> notes.json',
       saveFailed: 'Could not save: {e}', pickDeck: 'Pick this deck\'s own HTML file to save into',
+      editBar: '✎ Editing — click to select · drag to move · handles resize · double-click to type · Del hides · Ctrl+Z undo · <b>E</b> saves & exits',
+      editN: '{n} change(s)', editSaved: 'Saved {n} change(s) to {f}', editNotSaved: 'Not saved — your edits are kept as a draft',
+      editRestored: 'Restored {n} unsaved edit(s) — press E, then E again to save',
+      editDownloaded: 'Saved edits.json — merge it with: node scripts/apply-changes.mjs <deck.html> edits.json',
+      pick: 'Click an element to copy its location for your agent (Esc cancels)', copied: 'Copied: {t}',
       keys: [['← → 1–9', 'Navigate'], ['P', 'Presenter view (2nd window)'], ['N', 'Speaker notes'], ['M', 'Slide menu'],
         ['T', 'Talk timer (Shift+T reset)'], ['B / W', 'Black / white screen'], ['L', 'Laser pointer'],
-        ['D', 'Draw (C clear, Backspace undo)'], ['F', 'Fullscreen'], ['Ctrl+P', 'Print every slide'], ['Esc', 'Close panels'], ['?', 'This help']],
+        ['D', 'Draw (C clear, Backspace undo)'], ['E', 'Edit mode (E again saves)'], ['K', 'Copy an element\'s location for your agent'], ['F', 'Fullscreen'], ['Ctrl+P', 'Print every slide'], ['Esc', 'Close panels'], ['?', 'This help']],
     },
     vi: {
       notes: 'Ghi chú người nói', noNotes: 'Slide này không có ghi chú.', next: 'Tiếp theo', end: 'Hết bài',
@@ -81,11 +86,16 @@
       edit: '✎ Sửa', done: '✓ Xong', saveFile: '💾 Lưu vào file', unsaved: '{n} chưa lưu', saved: 'Đã lưu ghi chú vào {f}',
       nothing: 'Không có ghi chú nào thay đổi', restored: 'Đã khôi phục {n} ghi chú chưa lưu — bấm P rồi Lưu',
       otherFile: 'Bạn chọn "{a}" nhưng deck này là "{b}". Vẫn ghi vào file đó?',
-      downloaded: 'Đã tải notes.json — ghép vào deck bằng: node scripts/apply-notes.mjs <deck.html> notes.json',
+      downloaded: 'Đã tải notes.json — ghép vào deck bằng: node scripts/apply-changes.mjs <deck.html> notes.json',
       saveFailed: 'Không lưu được: {e}', pickDeck: 'Chọn chính file HTML của deck này để lưu',
+      editBar: '✎ Đang chỉnh sửa — click để chọn · kéo để di chuyển · kéo núm để đổi cỡ · double-click để gõ · Del ẩn · Ctrl+Z hoàn tác · <b>E</b> lưu & thoát',
+      editN: '{n} thay đổi', editSaved: 'Đã lưu {n} thay đổi vào {f}', editNotSaved: 'Chưa lưu — thay đổi được giữ làm bản nháp',
+      editRestored: 'Đã khôi phục {n} chỉnh sửa chưa lưu — bấm E rồi E lần nữa để lưu',
+      editDownloaded: 'Đã tải edits.json — ghép vào deck bằng: node scripts/apply-changes.mjs <deck.html> edits.json',
+      pick: 'Click vào phần tử để chép vị trí cho agent (Esc huỷ)', copied: 'Đã chép: {t}',
       keys: [['← → 1–9', 'Chuyển slide'], ['P', 'Màn hình người trình bày (cửa sổ 2)'], ['N', 'Ghi chú người nói'], ['M', 'Menu các slide'],
         ['T', 'Đồng hồ (Shift+T đặt lại)'], ['B / W', 'Màn hình đen / trắng'], ['L', 'Con trỏ laser'],
-        ['D', 'Vẽ lên slide (C xoá, Backspace hoàn tác)'], ['F', 'Toàn màn hình'], ['Ctrl+P', 'In mọi slide'], ['Esc', 'Đóng bảng'], ['?', 'Bảng này']],
+        ['D', 'Vẽ lên slide (C xoá, Backspace hoàn tác)'], ['E', 'Chỉnh sửa (E lần nữa để lưu)'], ['K', 'Chép vị trí phần tử cho agent'], ['F', 'Toàn màn hình'], ['Ctrl+P', 'In mọi slide'], ['Esc', 'Đóng bảng'], ['?', 'Bảng này']],
     },
   };
   const L = STR[(document.documentElement.lang || '').slice(0, 2).toLowerCase()] || STR.en;
@@ -110,6 +120,8 @@
     [data-countdown] { cursor: pointer; font-variant-numeric: tabular-nums; }
     [data-countdown].dk-done { opacity: .55; }
     html.dk-laser, html.dk-laser * { cursor: none !important; }
+    html.dk-pick, html.dk-pick * { cursor: crosshair !important; }
+    html.dk-editing [contenteditable] { outline: none; cursor: text; }
     @media print {
       * { transition: none !important; }
       #deck-kit { display: none !important; }
@@ -168,6 +180,17 @@
       background: radial-gradient(circle, #fff 0 18%, #ff2a2a 30% 55%, rgba(255,42,42,0) 72%); pointer-events: none; display: none;
       box-shadow: 0 0 14px 6px rgba(255,42,42,.45); }
     .dk-laser.dk-show { display: block; }
+    /* edit mode */
+    .dk-edbar { top: 0; left: 50%; transform: translateX(-50%); border-radius: 0 0 12px 12px; padding: 8px 16px; font-size: 14px; white-space: nowrap; }
+    .dk-edbar.dk-show { display: flex; gap: 14px; align-items: center; }
+    .dk-edbar b { color: #93C5FD; } .dk-edbar .dk-edn { color: #FBBF24; }
+    .dk-hov { position: fixed; z-index: 2147483120; border: 1.5px dashed #3B82F6; pointer-events: none; display: none; box-sizing: border-box; }
+    .dk-sel { position: fixed; z-index: 2147483125; border: 2px solid #3B82F6; display: none; cursor: move; box-sizing: border-box; touch-action: none; }
+    .dk-sel.dk-typing { pointer-events: none; border-style: dotted; }
+    .dk-sel .dk-h { position: absolute; width: 12px; height: 12px; margin: -7px 0 0 -7px; background: #fff; border: 2px solid #3B82F6; border-radius: 3px; touch-action: none; }
+    .dk-sel.dk-typing .dk-h { display: none; }
+    .dk-sel .dk-tag { position: absolute; left: -2px; top: -24px; font: 600 11px ui-monospace, Menlo, monospace; background: #3B82F6; color: #fff;
+      padding: 2px 6px; border-radius: 4px; white-space: nowrap; pointer-events: none; }
     /* presenter window */
     .dk-pv { position: fixed; inset: 0; z-index: 2147483300; background: #0b1220; display: grid; gap: 18px; padding: 18px;
       grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
@@ -369,10 +392,16 @@
       `<h3>${esc(L.help)}</h3><table>${L.keys.map(([k, d]) => `<tr><td><kbd>${esc(k)}</kbd></td><td>${esc(d)}</td></tr>`).join('')}</table>`);
     const toast = el('div', 'dk-panel dk-toast');
     const blankEl = el('div', 'dk-blank');
+    const edbar = el('div', 'dk-panel dk-edbar', `<span>${L.editBar}</span><span class="dk-edn"></span>`);
+    const hov = el('div', 'dk-hov');
+    const selbox = el('div', 'dk-sel', '<span class="dk-tag"></span>' +
+      ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].map((d) => `<i class="dk-h" data-dir="${d}"></i>`).join(''));
+    const HPOS = { nw: [0, 0, 'nwse'], n: [50, 0, 'ns'], ne: [100, 0, 'nesw'], e: [100, 50, 'ew'], se: [100, 100, 'nwse'], s: [50, 100, 'ns'], sw: [0, 100, 'nesw'], w: [0, 50, 'ew'] };
+    selbox.querySelectorAll('.dk-h').forEach((h) => { const [x, y, c] = HPOS[h.dataset.dir]; h.style.left = x + '%'; h.style.top = y + '%'; h.style.cursor = c + '-resize'; });
     const ink = el('canvas', 'dk-ink');
     const laser = el('div', 'dk-laser');
     if (plan.has && ROLE === 'main') root.appendChild(progress);
-    root.append(ink, notes, menu, tmr, help, toast, blankEl, laser);
+    root.append(ink, hov, selbox, notes, menu, tmr, help, toast, blankEl, laser, edbar);
     document.body.appendChild(host);
 
     tmr.addEventListener('click', () => timerCmd('pause'));
@@ -380,7 +409,7 @@
     // own handlers (several decks navigate on any click or wheel).
     ['click', 'mousedown', 'pointerdown', 'touchstart', 'touchend', 'wheel'].forEach((t) =>
       host.addEventListener(t, (e) => e.stopPropagation(), { passive: true }));
-    ui = { host, root, progress, notes, menu, tmr, help, toast, blankEl, ink, laser };
+    ui = { host, root, progress, notes, menu, tmr, help, toast, blankEl, ink, laser, edbar, hov, selbox };
     buildMenu();
   }
 
@@ -1174,41 +1203,545 @@
     return dt + '\n' + doc.documentElement.outerHTML + '\n';
   }
 
-  async function saveNotesToFile() {
-    if (!notesEdits.size) { renderNoteStatus(L.nothing); return; }
-    const deckName = decodeURIComponent(location.pathname.split('/').pop() || 'index.html');
-    if (window.showOpenFilePicker) {
-      try {
-        if (!fileHandle) {
-          renderNoteStatus(L.pickDeck);
-          [fileHandle] = await window.showOpenFilePicker({ types: [{ description: 'HTML', accept: { 'text/html': ['.html', '.htm'] } }] });
-          if (fileHandle.name !== deckName && !confirm(fmt(L.otherFile, { a: fileHandle.name, b: deckName }))) { fileHandle = null; renderNoteStatus(); return; }
-        }
-        let perm = await fileHandle.queryPermission({ mode: 'readwrite' });
-        if (perm !== 'granted') perm = await fileHandle.requestPermission({ mode: 'readwrite' });
-        if (perm !== 'granted') throw new Error('permission denied');
-        const out = patchNotes(await (await fileHandle.getFile()).text(), notesEdits, slides.length);
-        const w = await fileHandle.createWritable();
-        await w.write(out);
-        await w.close();
-        notesEdits.clear();
-        clearDraft();
-        send(window.opener, { dk: 'notes-saved' });
-        renderNoteStatus(fmt(L.saved, { f: fileHandle.name }));
-        return;
-      } catch (e) {
-        if (e.name === 'AbortError') { renderNoteStatus(); return; }
-        renderNoteStatus(fmt(L.saveFailed, { e: e.message }));
-        if (!/slides/.test(e.message)) return;
+  const deckName = () => decodeURIComponent(location.pathname.split('/').pop() || 'index.html');
+
+  /** Rewrite the deck's own HTML file: transform(sourceText) → new text.
+   *  File System Access (Chrome/Edge); the deck file is picked once per
+   *  window. Throws {fallback: true} where the API is missing. */
+  async function writeDeck(transform, onPick) {
+    if (!window.showOpenFilePicker) { const e = new Error('no file access'); e.fallback = true; throw e; }
+    if (!fileHandle) {
+      if (onPick) onPick();
+      [fileHandle] = await window.showOpenFilePicker({ types: [{ description: 'HTML', accept: { 'text/html': ['.html', '.htm'] } }] });
+      if (fileHandle.name !== deckName() && !confirm(fmt(L.otherFile, { a: fileHandle.name, b: deckName() }))) {
+        fileHandle = null;
+        const e = new Error('cancelled'); e.name = 'AbortError'; throw e;
       }
     }
-    // No File System Access (Firefox, Safari): hand over a notes.json to merge.
-    const blob = new Blob([JSON.stringify({ deck: deckName, slides: slides.length, notes: Object.fromEntries(notesEdits) }, null, 2)], { type: 'application/json' });
+    let perm = await fileHandle.queryPermission({ mode: 'readwrite' });
+    if (perm !== 'granted') perm = await fileHandle.requestPermission({ mode: 'readwrite' });
+    if (perm !== 'granted') throw new Error('permission denied');
+    const out = transform(await (await fileHandle.getFile()).text());
+    const w = await fileHandle.createWritable();
+    await w.write(out);
+    await w.close();
+    return fileHandle.name;
+  }
+  function download(name, data) {
     const a = el('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'notes.json';
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+    a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  async function saveNotesToFile() {
+    if (!notesEdits.size) { renderNoteStatus(L.nothing); return; }
+    try {
+      const name = await writeDeck((src) => patchNotes(src, notesEdits, slides.length), () => renderNoteStatus(L.pickDeck));
+      notesEdits.clear();
+      clearDraft();
+      send(window.opener, { dk: 'notes-saved' });
+      renderNoteStatus(fmt(L.saved, { f: name }));
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') { renderNoteStatus(); return; }
+      if (!e.fallback) { renderNoteStatus(fmt(L.saveFailed, { e: e.message })); if (!/slides/.test(e.message)) return; }
+    }
+    // No File System Access (Firefox, Safari): hand over a notes.json to merge.
+    download('notes.json', { deck: deckName(), slides: slides.length, notes: Object.fromEntries(notesEdits) });
     renderNoteStatus(L.downloaded);
+  }
+
+  // ── Source mapping: a live element → its tag in the HTML source ─────────
+  // Used to save visual edits and to report line numbers. The element is
+  // found by its child-index path from the slide in a script-free parse of
+  // the source (checked by tag name, with its original text as a tie-break),
+  // then matched to the source tags of that slide in document order.
+  const SRC_TAG_RE = /<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<![^>]*>|<(\/?)([A-Za-z][\w:.-]*)((?:\s+[^\s"'>\/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*)\s*(\/?)>/g;
+  function tagsIn(src, start, end) {
+    const VOID = /^(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/i;
+    const re = new RegExp(SRC_TAG_RE.source, 'g');
+    re.lastIndex = start;
+    const out = [], stack = [];
+    let m;
+    while ((m = re.exec(src)) && m.index < end) {
+      if (!m[2]) continue;
+      const name = m[2].toLowerCase();
+      if (m[1]) {
+        for (let k = stack.length - 1; k >= 0; k--) {
+          if (stack[k].name !== name) continue;
+          const [open] = stack.splice(k);
+          open.close = m.index;
+          break;
+        }
+        continue;
+      }
+      const t = { name, start: m.index, openEnd: m.index + m[0].length, close: -1 };
+      out.push(t);
+      if (VOID.test(name) || m[4]) continue;
+      stack.push(t);
+      if (/^(script|style|textarea|title)$/.test(name)) {
+        const c = src.toLowerCase().indexOf('</' + name, re.lastIndex);
+        re.lastIndex = c < 0 ? src.length : c;
+      }
+    }
+    return out;
+  }
+  const pathOf = (node, slide) => {
+    const p = [];
+    for (let e = node; e && e !== slide; e = e.parentElement) p.unshift(Array.prototype.indexOf.call(e.parentElement.children, e));
+    return p;
+  };
+  const byPath = (slide, path) => path.reduce((e, k) => (e ? e.children[k] : null), slide);
+  const normText = (t) => (t || '').replace(/\s+/g, ' ').trim();
+  function sourceIndex(src, count = slides.length) {
+    const ranges = slideRanges(src);
+    if (ranges.length !== count || ranges.some((r) => r[2])) throw new Error(`the file has ${ranges.length} slides, the deck shows ${count}`);
+    const doc = new DOMParser().parseFromString(src, 'text/html');
+    const ds = doc.querySelector('deck-stage');
+    const list = ds
+      ? Array.from(ds.children).filter((e) => !/^(SCRIPT|STYLE|TEMPLATE)$/.test(e.tagName))
+      : Array.from(doc.querySelectorAll('.slide')).filter((x) => !x.parentElement.closest('.slide'));
+    return { src, ranges, list, maps: [] };
+  }
+  /** Source tag {start, openEnd, close} of the element at `path` on slide i. */
+  function locateIn(ix, i, path, tag, text) {
+    const ps = ix.list[i];
+    if (!ps) return null;
+    let pe = byPath(ps, path);
+    if (pe && pe.tagName.toLowerCase() !== tag) pe = null;
+    if (text != null && (!pe || normText(pe.textContent) !== normText(text))) {
+      const same = Array.from(ps.querySelectorAll(tag)).filter((e) => normText(e.textContent) === normText(text));
+      if (same.length === 1) pe = same[0];
+    }
+    if (!pe) return null;
+    if (!ix.maps[i]) {
+      const [start, end] = ix.ranges[i];
+      const tags = tagsIn(ix.src, start, end);
+      const map = new Map();
+      let j = 0;
+      for (const d of [ps, ...ps.querySelectorAll('*')]) {
+        const name = d.tagName.toLowerCase();
+        let k = j;
+        while (k < tags.length && tags[k].name !== name && k - j < 60) k++;
+        if (k < tags.length && tags[k].name === name) { map.set(d, tags[k]); j = k + 1; }
+      }
+      ix.maps[i] = map;
+    }
+    return ix.maps[i].get(pe) || null;
+  }
+  function setStyleProps(openTag, props) {
+    const m = openTag.match(/\sstyle\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'>]+))/i);
+    const before = m ? (m[2] ?? m[3] ?? m[4] ?? '') : '';
+    const map = new Map();
+    before.replace(/&quot;/g, '"').split(';').forEach((d) => { const k = d.indexOf(':'); if (k > 0) map.set(d.slice(0, k).trim().toLowerCase(), d.slice(k + 1).trim()); });
+    Object.entries(props).forEach(([k, v]) => (v ? map.set(k, v) : map.delete(k)));
+    const css = [...map].map(([k, v]) => `${k}: ${v}`).join('; ');
+    const attr = css ? ` style="${css.replace(/"/g, '&quot;')}"` : '';
+    if (m) return openTag.slice(0, m.index) + attr + openTag.slice(m.index + m[0].length);
+    return attr ? openTag.replace(/\s*(\/?)>$/, `${attr}$1>`) : openTag;
+  }
+  /** Apply visual edits [{slide, path, tag, text, style: {prop: value}, html?}]
+   *  to an HTML source string, touching only the edited tags. */
+  function patchEdits(src, edits, count = slides.length) {
+    const ix = sourceIndex(src, count);
+    let found = edits.map((e) => ({ e, t: locateIn(ix, e.slide, e.path, e.tag, e.text) }));
+    const lost = found.filter((x) => !x.t);
+    if (lost.length) throw new Error(`${lost.length} edited element(s) not found in the file (${lost.map((x) => '<' + x.e.tag + '>').join(', ')})`);
+    // A rewritten element already contains its children's state.
+    const rewritten = found.filter((x) => x.e.html != null && x.t.close >= 0);
+    found = found.filter((x) => !rewritten.some((r) => r !== x && x.t.start > r.t.openEnd && x.t.start < r.t.close));
+    let out = src;
+    found.sort((a, b) => b.t.start - a.t.start).forEach(({ e, t }) => {
+      if (e.html != null && t.close >= 0) out = out.slice(0, t.openEnd) + e.html + out.slice(t.close);
+      if (e.style && Object.keys(e.style).length) out = out.slice(0, t.start) + setStyleProps(out.slice(t.start, t.openEnd), e.style) + out.slice(t.openEnd);
+    });
+    return out;
+  }
+  async function readSource() {
+    if (/^https?:/.test(location.protocol)) { try { return await (await fetch(location.href.replace(/#.*$/, ''), { cache: 'no-store' })).text(); } catch (e) {} }
+    if (fileHandle) { try { return await (await fileHandle.getFile()).text(); } catch (e) {} }
+    return null;
+  }
+
+  // ── Edit mode (E) ────────────────────────────────────────────────────────
+  // Select, move (CSS translate), resize, type and hide elements on the
+  // slides; E again writes only those elements back into the HTML file.
+  const TRACK = ['translate', 'width', 'height', 'font-size', 'display'];
+  const ed = { on: false, sel: null, touched: new Map(), undo: [], redo: [], typing: null };
+  const EDRAFT = 'deck-kit-edits:' + location.pathname;
+  const round = (v, d = 0) => +v.toFixed(d);
+  const isMedia = (e) => /^(img|canvas|svg|video|picture|iframe|object|embed)$/i.test(e.tagName);
+  const isTextual = (e) => !isMedia(e) && !!normText(e.textContent) && !e.querySelector('img, canvas, svg, video');
+  const slideOf = (node) => slides.find((x) => x.contains(node)) || null;
+  const editable = (node) => node && node.nodeType === 1 && slides[cur] && slides[cur] !== node && slides[cur].contains(node) && !node.closest('aside.notes');
+
+  function snapshot(e) { const o = {}; TRACK.forEach((p) => { o[p] = e.style.getPropertyValue(p); }); o.html = e.innerHTML; return o; }
+  function restoreSnap(e, snap) {
+    TRACK.forEach((p) => (snap[p] ? e.style.setProperty(p, snap[p]) : e.style.removeProperty(p)));
+    if (!e.getAttribute('style')) e.removeAttribute('style');
+    if (e.innerHTML !== snap.html) e.innerHTML = snap.html;
+  }
+  function touch(e) {
+    if (ed.touched.has(e)) return ed.touched.get(e);
+    const s = slideOf(e);
+    const info = { slide: slides.indexOf(s), path: pathOf(e, s), tag: e.tagName.toLowerCase(), text: e.textContent, orig: snapshot(e), htmlEdited: false };
+    ed.touched.set(e, info);
+    return info;
+  }
+  function pendingEdits() {
+    const list = [];
+    ed.touched.forEach((info, e) => {
+      const now = snapshot(e);
+      const style = {};
+      TRACK.forEach((p) => { if (now[p] !== info.orig[p]) style[p] = now[p]; });
+      const item = { slide: info.slide, path: info.path, tag: info.tag, text: info.text, style };
+      if (info.htmlEdited && now.html !== info.orig.html) {
+        // Typing trims the source's indentation around the text; put it back.
+        const lead = info.orig.html.match(/^\s*/)[0], trail = info.orig.html.match(/\s*$/)[0];
+        item.html = lead + now.html.trim() + trail;
+      }
+      if (Object.keys(style).length || item.html != null) list.push(item);
+    });
+    return list;
+  }
+  function saveEditDraft() { try { const p = pendingEdits(); if (p.length) localStorage.setItem(EDRAFT, JSON.stringify(p)); else localStorage.removeItem(EDRAFT); } catch (e) {} }
+  function loadEditDraft() {
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(EDRAFT) || 'null'); } catch (e) {}
+    if (!Array.isArray(d)) return 0;
+    let n = 0;
+    d.forEach((item) => {
+      const e = byPath(slides[item.slide], item.path);
+      if (!e || e.tagName.toLowerCase() !== item.tag) return;
+      const info = touch(e);
+      info.text = item.text;
+      Object.entries(item.style || {}).forEach(([p, v]) => (v ? e.style.setProperty(p, v) : e.style.removeProperty(p)));
+      if (item.html != null) { e.innerHTML = item.html; info.htmlEdited = true; }
+      n++;
+    });
+    return n;
+  }
+  function commit(e, before) {
+    const after = snapshot(e);
+    if (JSON.stringify(after) === JSON.stringify(before)) return;
+    ed.undo.push({ e, before, after });
+    ed.redo = [];
+    saveEditDraft();
+    renderEditBar();
+  }
+  function renderEditBar() {
+    const n = pendingEdits().length;
+    ui.edbar.querySelector('.dk-edn').textContent = n ? fmt(L.editN, { n }) : '';
+  }
+  function place(box, e) {
+    const r = e.getBoundingClientRect();
+    Object.assign(box.style, { left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', display: 'block' });
+  }
+  function select(e) {
+    ed.sel = e;
+    if (!e) { ui.selbox.style.display = 'none'; return; }
+    const cls = Array.from(e.classList).slice(0, 2).map((c) => '.' + c).join('');
+    ui.selbox.querySelector('.dk-tag').textContent = e.tagName.toLowerCase() + cls;
+    place(ui.selbox, e);
+  }
+  function enterEdit() {
+    ['menu', 'help', 'notes'].forEach((p) => show(p, false));
+    if (ink.on) setDraw(false);
+    if (laserOn) setLaser(false);
+    ed.on = true;
+    document.documentElement.classList.add('dk-editing');
+    show('edbar', true);
+    renderEditBar();
+  }
+  async function exitEdit() {
+    stopTyping();
+    select(null);
+    ui.hov.style.display = 'none';
+    ed.on = false;
+    document.documentElement.classList.remove('dk-editing');
+    show('edbar', false);
+    const edits = pendingEdits();
+    if (!edits.length) return;
+    try {
+      const name = await writeDeck((src) => patchEdits(src, edits));
+      ed.touched.forEach((info, e) => { info.orig = snapshot(e); info.htmlEdited = false; info.text = e.textContent; });
+      ed.undo = []; ed.redo = [];
+      try { localStorage.removeItem(EDRAFT); } catch (x) {}
+      flash(fmt(L.editSaved, { n: edits.length, f: name }), 3500);
+    } catch (e) {
+      if (e.name === 'AbortError') { flash(L.editNotSaved, 3500); return; }
+      if (e.fallback) { download('edits.json', { deck: deckName(), slides: slides.length, edits }); flash(L.editDownloaded, 6000); return; }
+      flash(fmt(L.saveFailed, { e: e.message }), 6000);
+    }
+  }
+  function startTyping(e) {
+    if (!isTextual(e)) return;
+    const info = touch(e);
+    info.htmlEdited = true;
+    ed.typing = { e, before: snapshot(e) };
+    try { e.contentEditable = e.firstElementChild ? 'true' : 'plaintext-only'; } catch (x) { e.contentEditable = 'true'; }
+    ui.selbox.classList.add('dk-typing');
+    e.focus();
+    const r = document.createRange();
+    r.selectNodeContents(e);
+    r.collapse(false);
+    const sel = getSelection();
+    sel.removeAllRanges();
+    sel.addRange(r);
+  }
+  function stopTyping() {
+    const t = ed.typing;
+    if (!t) return;
+    t.e.removeAttribute('contenteditable');
+    ui.selbox.classList.remove('dk-typing');
+    ed.typing = null;
+    commit(t.e, t.before);
+  }
+  const translateOf = (e) => {
+    const v = e.style.translate || getComputedStyle(e).translate;
+    if (!v || v === 'none') return [0, 0];
+    const [x = 0, y = 0] = v.split(/\s+/).map(parseFloat);
+    return [x || 0, y || 0];
+  };
+  const cssW = (e, w, axis) => {
+    const cs = getComputedStyle(e);
+    if (cs.boxSizing === 'border-box') return w;
+    const pad = axis === 'x'
+      ? parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth)
+      : parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom) + parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+    return Math.max(1, w - pad);
+  };
+  function startDrag(ev, mode, dir) {
+    const e = ed.sel;
+    if (!e) return;
+    touch(e);
+    const before = snapshot(e);
+    const r = e.getBoundingClientRect();
+    const k = (e.offsetWidth ? r.width / e.offsetWidth : 1) || 1;   // screen px per CSS px
+    const [tx0, ty0] = translateOf(e);
+    const w0 = e.offsetWidth || r.width / k, h0 = e.offsetHeight || r.height / k;
+    const fs0 = parseFloat(getComputedStyle(e).fontSize);
+    const x0 = ev.clientX, y0 = ev.clientY;
+    let moved = false;
+    const move = (m) => {
+      let dx = (m.clientX - x0) / k, dy = (m.clientY - y0) / k;
+      if (!moved && Math.hypot(m.clientX - x0, m.clientY - y0) < 3) return;
+      moved = true;
+      if (mode === 'move') {
+        if (m.shiftKey) { if (Math.abs(dx) > Math.abs(dy)) dy = 0; else dx = 0; }
+        e.style.translate = `${round(tx0 + dx)}px ${round(ty0 + dy)}px`;
+      } else {
+        let w = w0, h = h0, tx = tx0, ty = ty0;
+        if (dir.includes('e')) w = w0 + dx;
+        if (dir.includes('w')) { w = w0 - dx; tx = tx0 + dx; }
+        if (dir.includes('s')) h = h0 + dy;
+        if (dir.includes('n')) { h = h0 - dy; ty = ty0 + dy; }
+        w = Math.max(8, w); h = Math.max(8, h);
+        const corner = dir.length === 2, textual = isTextual(e);
+        if (corner && (textual || isMedia(e)) && !m.shiftKey) {
+          // Corners keep proportions; for text that means scaling the type.
+          const ratio = w / w0;
+          h = h0 * ratio;
+          if (dir.includes('w')) tx = tx0 + (w0 - w);
+          if (dir.includes('n')) ty = ty0 + (h0 - h);
+          if (textual) e.style.fontSize = round(fs0 * ratio, 1) + 'px';
+        }
+        if (dir !== 'n' && dir !== 's') e.style.width = round(cssW(e, w, 'x')) + 'px';
+        if (dir !== 'e' && dir !== 'w' && !(corner && isTextual(e) && !m.shiftKey)) e.style.height = round(cssW(e, h, 'y')) + 'px';
+        e.style.translate = `${round(tx)}px ${round(ty)}px`;
+      }
+      place(ui.selbox, e);
+    };
+    const up = (u) => {
+      window.removeEventListener('pointermove', move, true);
+      window.removeEventListener('pointerup', up, true);
+      if (moved) commit(e, before);
+      else if (mode === 'move') drill(u);
+    };
+    window.addEventListener('pointermove', move, true);
+    window.addEventListener('pointerup', up, true);
+  }
+  /** Click (without dragging) on the selection: select the child under the pointer. */
+  function drill(ev) {
+    const under = document.elementsFromPoint(ev.clientX, ev.clientY).find((n) => n !== ed.sel && ed.sel.contains(n) && n !== ui.host);
+    if (under) select(under);
+  }
+  function undoRedo(redo) {
+    const from = redo ? ed.redo : ed.undo, to = redo ? ed.undo : ed.redo;
+    const step = from.pop();
+    if (!step) return;
+    restoreSnap(step.e, redo ? step.after : step.before);
+    to.push(step);
+    if (ed.sel) place(ui.selbox, ed.sel);
+    saveEditDraft();
+    renderEditBar();
+  }
+  function nudge(dx, dy) {
+    const e = ed.sel;
+    touch(e);
+    const before = snapshot(e);
+    const [tx, ty] = translateOf(e);
+    e.style.translate = `${round(tx + dx)}px ${round(ty + dy)}px`;
+    place(ui.selbox, e);
+    commit(e, before);
+  }
+  /** Keys while editing. Returns true when the key was used. */
+  function editKey(e) {
+    const k = e.key;
+    if ((e.ctrlKey || e.metaKey) && /^z$/i.test(k)) { undoRedo(e.shiftKey); return true; }
+    if ((e.ctrlKey || e.metaKey) && /^y$/i.test(k)) { undoRedo(true); return true; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return false;
+    if (k === 'e' || k === 'E') { exitEdit(); return true; }
+    if (k === 'm' || k === 'M') { show('menu'); return true; }
+    if (k === 'Escape') {
+      if (ui.menu.classList.contains('dk-show')) show('menu', false);
+      else if (ed.sel) select(editable(ed.sel.parentElement) ? ed.sel.parentElement : null);
+      return true;
+    }
+    if (ed.sel && (k === 'Delete' || k === 'Backspace')) {
+      const s = ed.sel;
+      touch(s);
+      const before = snapshot(s);
+      s.style.display = 'none';
+      commit(s, before);
+      select(null);
+      return true;
+    }
+    if (ed.sel && /^Arrow/.test(k)) {
+      const d = e.shiftKey ? 10 : 1;
+      nudge(k === 'ArrowLeft' ? -d : k === 'ArrowRight' ? d : 0, k === 'ArrowUp' ? -d : k === 'ArrowDown' ? d : 0);
+      return true;
+    }
+    if (NAV_KEYS.test(k) || /^[0-9]$/.test(k)) return false;   // let navigation through
+    return true;                                                // swallow other shortcuts
+  }
+
+  // ── Pick an element for the agent (K) ────────────────────────────────────
+  let picking = false;
+  let eatClickUntil = 0;   // swallow the click that follows a pick, so the deck doesn't react to it
+  function cssPathIn(e, s) {
+    const parts = [];
+    for (let n = e; n && n !== s; n = n.parentElement) {
+      let part = n.tagName.toLowerCase();
+      const cls = Array.from(n.classList).filter((c) => !/^dk-/.test(c)).slice(0, 2);
+      if (n.id) part += '#' + n.id;
+      else if (cls.length) part += '.' + cls.join('.');
+      const sibs = Array.from(n.parentElement.children).filter((x) => x.tagName === n.tagName);
+      if (!n.id && sibs.length > 1) part += `:nth-of-type(${sibs.indexOf(n) + 1})`;
+      parts.unshift(part);
+    }
+    return parts.join(' > ');
+  }
+  async function describe(e) {
+    const s = slideOf(e);
+    const i = slides.indexOf(s);
+    const file = location.protocol === 'file:' ? decodeURIComponent(location.pathname) : location.href.replace(/[?#].*$/, '');
+    const tag = e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + Array.from(e.classList).filter((c) => !/^dk-/.test(c)).map((c) => '.' + c).join('');
+    const text = normText(e.textContent);
+    const snip = text.length > 90 ? text.slice(0, 87) + '…' : text;
+    let line = '';
+    try {
+      const src = await readSource();
+      if (src) {
+        const t = locateIn(sourceIndex(src), i, pathOf(e, s), e.tagName.toLowerCase(), e.textContent);
+        if (t) line = `, line ${src.slice(0, t.start).split('\n').length}`;
+      }
+    } catch (x) {}
+    return `${file}${line} — slide ${i + 1} "${titleOf(s, i)}" — <${tag}>${snip ? ` "${snip}"` : ''} — selector: ${cssPathIn(e, s) || '(the slide itself)'}`;
+  }
+  async function copyText(t) {
+    try { await navigator.clipboard.writeText(t); return true; } catch (x) {}
+    const ta = el('textarea');
+    ta.value = t;
+    ta.style.cssText = 'position:fixed;left:-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (x) {}
+    ta.remove();
+    return ok;
+  }
+  function startPick() {
+    picking = true;
+    document.documentElement.classList.add('dk-pick');
+    flash(L.pick, 4000);
+  }
+  function stopPick() {
+    picking = false;
+    document.documentElement.classList.remove('dk-pick');
+    ui.hov.style.display = 'none';
+  }
+
+  // Pointer handling shared by edit mode and pick mode (capture phase, so the
+  // template's own click handlers and links don't fire).
+  function onEditPointer(ev) {
+    if (!ed.on && !picking) {
+      if (/^(click|mouseup|touchend)$/.test(ev.type) && performance.now() < eatClickUntil) {
+        ev.preventDefault(); ev.stopPropagation();
+        if (ev.type === 'click') eatClickUntil = 0;
+      }
+      return;
+    }
+    const path = ev.composedPath();
+    const target = path[0];
+    if (path.includes(ui.host)) {
+      if (ev.type !== 'pointerdown' || !ed.on) return;
+      const h = target.closest && target.closest('.dk-h');
+      if (h) { ev.preventDefault(); startDrag(ev, 'resize', h.dataset.dir); return; }
+      if (target === ui.selbox || (target.closest && target.closest('.dk-sel'))) { ev.preventDefault(); startDrag(ev, 'move'); }
+      return;
+    }
+    if (ed.typing && ed.typing.e.contains(target)) return;   // caret placement while typing
+    const inSlide = editable(target);
+    if (ev.type === 'pointermove') {
+      if (inSlide && target !== ed.sel) place(ui.hov, target); else ui.hov.style.display = 'none';
+      return;
+    }
+    if (!inSlide) {
+      if (ev.type === 'pointerdown' && ed.on) { stopTyping(); select(null); }
+      return;
+    }
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (ev.type !== 'pointerdown') return;
+    if (picking) {
+      stopPick();
+      eatClickUntil = performance.now() + 1000;
+      describe(target).then((t) => copyText(t).then(() => flash(fmt(L.copied, { t }), 6000)));
+      return;
+    }
+    stopTyping();
+    select(target);
+    ui.hov.style.display = 'none';
+    startDrag(ev, 'move');
+  }
+  function onEditDblClick(ev) {
+    if (!ed.on || !ed.sel) return;
+    const path = ev.composedPath();
+    if (path.includes(ui.host) || editable(path[0])) { ev.preventDefault(); ev.stopPropagation(); startTyping(ed.sel); }
+  }
+
+  // ── Links between slides ─────────────────────────────────────────────────
+  // <a href="#some-id"> jumps to the slide holding that id (#7 = slide 7).
+  // Chrome keeps such links clickable in a printed PDF.
+  function slideForHash(h) {
+    const id = decodeURIComponent((h || '').replace(/^#/, ''));
+    if (!id) return -1;
+    if (/^\d+$/.test(id)) return +id - 1;
+    let t = null;
+    try { t = document.getElementById(id); } catch (x) {}
+    return t ? slides.findIndex((s) => s === t || s.contains(t)) : -1;
+  }
+  function onLinkClick(ev) {
+    if (ed.on || picking) return;
+    const a = ev.target.closest && ev.target.closest('a[href^="#"]');
+    if (!a) return;
+    const k = slideForHash(a.getAttribute('href'));
+    if (k < 0 || k >= slides.length) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    goto(k);
   }
 
   // ── Navigation hook ──────────────────────────────────────────────────────
@@ -1246,6 +1779,7 @@
       cdTick(dt);
     }
     if (timer.started) renderTimer();
+    if (ed.on && ed.sel) { if (ed.sel.isConnected && slides[cur] && slides[cur].contains(ed.sel)) place(ui.selbox, ed.sel); else select(null); }
     requestAnimationFrame(loop);
   }
 
@@ -1269,6 +1803,8 @@
       case 'n': case 'N': if (ROLE === 'main') show('notes'); break;
       case 'm': case 'M': show('menu'); break;
       case 'p': case 'P': if (ROLE === 'main') openPresenter(); break;
+      case 'e': case 'E': if (ROLE !== 'main') return false; enterEdit(); break;
+      case 'k': case 'K': if (ROLE !== 'main') return false; startPick(); break;
       case 't': if (ROLE === 'main') { show('tmr'); renderTimer(); } break;
       case 'T': timerCmd('reset'); flash(L.elapsed + ' 0:00'); break;
       case 'f': case 'F': toggleFullscreen(); break;
@@ -1280,6 +1816,7 @@
       case 'Backspace': if (ink.on && ink.strokes[cur] && ink.strokes[cur].length) { ink.strokes[cur].pop(); drawInk(); } else return false; break;
       case '?': show('help'); break;
       case 'Escape':
+        if (picking) stopPick();
         ['menu', 'help', 'notes'].forEach((p) => show(p, false));
         if (ink.on) setDraw(false);
         if (laserOn) setLaser(false);
@@ -1295,6 +1832,15 @@
     // Events from our shadow UI are retargeted to the host; look at the real target.
     const t = (e.composedPath && e.composedPath()[0]) || e.target;
     if (editing && e.key === 'Escape') { setEditing(false); e.preventDefault(); return; }
+    if (ed.typing) {
+      if (e.key === 'Escape') { stopTyping(); e.preventDefault(); e.stopImmediatePropagation(); return; }
+      e.stopImmediatePropagation();   // keys belong to the text being typed
+      return;
+    }
+    if (ed.on) {
+      if (editKey(e)) { e.preventDefault(); e.stopImmediatePropagation(); return; }
+      if (!NAV_KEYS.test(e.key) && !/^[0-9]$/.test(e.key)) return;
+    }
     const typing = t && (t.isContentEditable || /^(TEXTAREA|SELECT)$/.test(t.tagName) ||
       (t.tagName === 'INPUT' && !/^(range|checkbox|radio|button|submit|reset|color)$/.test(t.type)));
     const onControl = t && t.tagName === 'INPUT' && /^(range|checkbox|radio)$/.test(t.type);
@@ -1565,6 +2111,9 @@
     preparePrint,
     cleanupPrint,
     patchNotes,
+    patchEdits,
+    edit: { enter: () => enterEdit(), exit: () => exitEdit(), get on() { return ed.on; }, pending: () => pendingEdits() },
+    describe: (node) => describe(node),
     /** Visit every slide (so on-entry content renders), then open the print dialog. */
     async print() {
       if (document.body.getAttribute('data-print-visit') !== 'off') {
@@ -1615,6 +2164,11 @@
     setupInk();
     document.querySelectorAll('[data-countdown]').forEach(cdRender);
     document.addEventListener('click', onDocClick);
+    document.addEventListener('click', onLinkClick, true);
+    ['pointerdown', 'pointermove', 'click', 'mousedown', 'mouseup', 'touchstart', 'touchend'].forEach((t) => window.addEventListener(t, onEditPointer, { capture: true, passive: false }));
+    window.addEventListener('dblclick', onEditDblClick, true);
+    window.addEventListener('hashchange', () => { const k = slideForHash(location.hash); if (k >= 0 && k < slides.length && k !== cur) goto(k); });
+    window.addEventListener('beforeunload', (e) => { if (ed.on && pendingEdits().length) { e.preventDefault(); e.returnValue = ''; } });
     document.addEventListener('input', onControl, true);
     document.addEventListener('change', onControl, true);
     window.addEventListener('keydown', onKey, true);
@@ -1630,15 +2184,19 @@
     }
 
     // Deep link (#N) for decks that don't restore it themselves.
-    if (!adapter.ownsHash) {
-      const m = (location.hash || '').match(/^#(\d+)$/);
-      if (m) { const n = parseInt(m[1], 10) - 1; if (n > 0 && n < slides.length) goto(n); }
+    // Deep link: #N for decks that don't restore it themselves, #id for any deck.
+    {
+      const k = slideForHash(location.hash);
+      const numeric = /^#\d+$/.test(location.hash);
+      if (k > 0 && k < slides.length && (!numeric || !adapter.ownsHash)) goto(k);
     }
 
     try {
       if (!localStorage.getItem('deck-kit-hint')) { flash(L.helpHint, 3500); localStorage.setItem('deck-kit-hint', '1'); }
       const restored = loadDraft();
       if (restored) { renderNotes(); flash(fmt(L.restored, { n: restored }), 5000); }
+      const restoredEdits = loadEditDraft();
+      if (restoredEdits) flash(fmt(L.editRestored, { n: restoredEdits }), 6000);
     } catch (e) {}
 
     requestAnimationFrame(loop);

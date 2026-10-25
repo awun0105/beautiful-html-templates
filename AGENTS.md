@@ -14,11 +14,25 @@ For every deck-building request, follow this exact sequence. Do **not** skip the
 
 Before reading any files, ask the user:
 
-> "Two quick questions before I pick a template:
+> "Three quick questions before I pick a template:
 > 1. **What's the occasion?** (e.g. founder pitch, research synthesis, brand manifesto, classroom kickoff, etc.)
-> 2. **What mood / vibe do you want?** (e.g. confident & punchy, quiet & literary, warm & playful, dark & moody, etc.)"
+> 2. **What mood / vibe do you want?** (e.g. confident & punchy, quiet & literary, warm & playful, dark & moody, etc.)
+> 3. **Will you present it, or will people read it on their own?**"
 
 Wait for the user's answer. Do not pick yet. Even if the brief seems obvious, ask — the user's *taste* often surprises in ways no inferred brief can capture.
+
+Question 3 sets the **content density** for every slide:
+
+| | Speaking deck (presented live) | Reading deck (sent around, read alone) |
+|---|---|---|
+| Per slide | One idea; a headline, 1–3 short bullets or one visual | A complete thought: headline that states the point, supporting text, labelled figures |
+| Type | Large; generous empty space | Smaller but comfortable to read on a laptop |
+| Where the detail goes | Speaker notes (`<aside class="notes">`) | On the slide |
+| Slide count | More slides, faster pace | Fewer, denser slides |
+
+When the user brings existing material (a PowerPoint, a document), still ask question 3 — it decides how much text stays on the slides and how much moves into the notes.
+
+**If the user gives you a `.pptx`:** import it first with `node scripts/pptx-to-deck.mjs talk.pptx --theme=<slug> --out=<dir>` (after Steps 2–4 pick the template). It extracts titles, bullets, tables, pictures and notes into `<dir>/source/talk.md` and builds a first deck; then rebuild the slides in the template's own layouts using that outline.
 
 ### Step 2 — Read `index.json` and pick 3 candidates
 
@@ -184,6 +198,19 @@ The rules:
 
 A good test: open your new slide between two existing slides in the deck. If it visibly *belongs* — same fonts, same colors, same decorations, same rhythm — you've succeeded. If it looks like a different template grafted on, you've failed; redo it.
 
+### Avoid generic "AI slop"
+
+New slides you design tend to drift toward the statistically average slide. Inside the template's system, push the other way:
+
+- **No default fonts or palettes.** Never fall back to Inter / Roboto / Arial / system-ui or a purple-to-blue gradient on white because it's easy — the template's fonts and colours are the point.
+- **One focal point per slide.** A slide should have one thing the eye lands on first (a number, a phrase, an image), not a grid of equal-weight boxes.
+- **No cookie-cutter card rows.** Three identical icon-title-text cards is the most generic layout there is; prefer the template's own components, asymmetry, or a single strong visual.
+- **Real hierarchy.** Big contrasts in size and weight beat many slightly different sizes.
+- **Atmosphere over flat fills.** Use the template's textures, grain, rules and ornaments instead of plain coloured rectangles.
+- **Motion with intent.** One orchestrated entrance (staggered reveal) beats animating everything; respect `prefers-reduced-motion`.
+
+(Design guidance adapted from [frontend-slides](https://github.com/zarazhangrui/frontend-slides), MIT.)
+
 ---
 
 ## 6. Common pitfalls
@@ -233,8 +260,11 @@ Every template loads `deck-kit.js` after its own navigation script. It finds the
 | `D` | Draw on the slide; `C` clears that slide's ink, `Backspace` undoes, `Esc` stops. Ink stays with its slide |
 | `F` | Fullscreen |
 | `Ctrl/Cmd+P` | Visits every slide (so charts drawn on entry fill in), then prints one slide per page, canvases kept |
+| `E` | **Edit mode**: click to select, drag to move, drag the handles to resize (corners scale text), double-click to retype, `Del` hides, arrows nudge, `Ctrl+Z`/`Ctrl+Y`. `E` again **saves into the HTML file** — only the edited tags change (`style="translate: …; width: …"` and new text) |
+| `K` | Click an element to **copy its location** (file, line when known, slide, tag, text, CSS selector) — paste it to the agent with what to change |
 | `?` / `Esc` | Shortcut help / close panels |
-| `#7` in the URL | Opens slide 7; the hash follows navigation |
+| `#7` / `#some-id` in the URL | Opens slide 7 / the slide holding that id; the hash follows navigation |
+| `<a href="#some-id">` | Jumps to the slide holding that id — also clickable in the printed PDF |
 | Swipe / tap | Touch navigation; taps on buttons, sliders and canvases go to the control |
 
 Panel text follows `<html lang>`: Vietnamese for `lang="vi"`, English otherwise.
@@ -311,7 +341,9 @@ Run `npm install` once in the repo root (installs `puppeteer-core`; it uses the 
 | `node scripts/md-to-deck.mjs talk.md --theme=<slug>` | Markdown → working deck in standard layouts, dressed in the template's fonts and palette (see `examples/md-deck/talk.md`). Use it to get content and timing right fast; move slides into the template's own layouts for the final look |
 | `node scripts/check-deck.mjs <deck.html> [--strict]` | Lint: placeholders, broken images, JS errors (errors); overflow, clipping, missing titles/notes/minutes (warnings) |
 | `node scripts/export.mjs <deck.html> [--pdf] [--png] [--handout] [--compact] [--pptx] [--pptx-editable]` | `slides.pdf`, `slide-NN.png`, an A4 `handout.pdf` with notes under each slide; `--compact` = small image-based PDF for e-mail; `--pptx` = PowerPoint with one slide image per slide and the speaker notes in the notes pane; `--pptx-editable` = real PowerPoint text boxes over a picture of the design, `<img>` as separate pictures, plus `fonts/` (TTF) to install — see below. Each slide is captured once its entry animations finish |
-| `node scripts/apply-notes.mjs <deck.html> notes.json` | Merge notes saved from the presenter view in browsers without direct file access; only the edited `<aside class="notes">` lines change |
+| `node scripts/apply-changes.mjs <deck.html> notes.json\|edits.json` | Merge notes (presenter view) or visual edits (`E`) saved in browsers without direct file access (Firefox, Safari); only the affected tags change. `apply-notes.mjs` is an alias |
+| `node scripts/pptx-to-deck.mjs talk.pptx --theme=<slug>` | Import a PowerPoint: titles, bullets (levels), tables, pictures and speaker notes → `source/talk.md` + a deck in md-to-deck layouts with the theme's look; hidden slides skipped unless `--include-hidden` |
+| `node scripts/deploy.mjs <deck.html> --to=vercel\|cloudflare\|github` | Publish one self-contained file (never `CLAUDE.md` or other files) to a link named after the deck folder (`--name=…`). `--preview` publishes a separate link without touching the main one; `--dry-run` shows the commands. Vercel/Cloudflare need a one-time `npx vercel login` / `npx wrangler login`; GitHub uses `gh` and a `<you>/slides` repo with one folder per deck. Publishing is public — run it only when the user asks |
 | `node scripts/bundle.mjs <deck.html> [--all-subsets]` | One self-contained offline `.html` with fonts embedded |
 | `node scripts/sync-runtime.mjs [--check]` | Copy `runtime/` into every template (edit runtime files only in `runtime/`) |
 | `npm test` | Runtime-copy check + headless test of all templates and the demo (also runs in GitHub Actions) |
@@ -324,4 +356,12 @@ Each slide becomes a background picture with the text hidden (decoration, charts
 - Rotated text, gradient-filled text, text inside SVG and `aria-hidden` decoration stay in the background picture (not editable).
 - Variable fonts with an optical-size axis (e.g. Source Serif 4, DM Sans) render a little wider in PowerPoint than in the browser at large sizes — leave room or shorten headlines.
 - Charts, shapes and decoration are pictures: text is editable, the design is not.
+
+---
+
+## 10. Working on a deck over time
+
+- **`CLAUDE.md` in the deck folder** is the deck's memory: purpose, audience, length, reading vs. speaking, voice, colour meanings, rules, and a dated list of the user's corrections. `new-deck.mjs`, `md-to-deck.mjs` and `pptx-to-deck.mjs` create it (in Vietnamese for `--lang=vi`). Read it before every change, fill in the `<FILL IN>` parts from the conversation, and add each correction the user makes so the next session doesn't repeat it.
+- **Locations from `K`** look like `…/index.html, line 412 — slide 5 "Title" — <p.lead> "text…" — selector: div.body > p.lead`. Edit exactly that element.
+- **Visual edits from `E`** arrive as inline `translate`, `width`, `height`, `font-size` or `display` on the edited tags. When you next restructure that slide, fold them into proper layout CSS.
 

@@ -31,3 +31,6 @@ jobs:
           test -s /tmp/export/slides.pdf && test -s /tmp/export/slides-compact.pdf && test -s /tmp/export/slides.pptx && test -s /tmp/export/handout.pdf
           unzip -p /tmp/export/slides-editable.pptx ppt/slides/slide1.xml | grep -q 'Every template'
           ls /tmp/export/fonts/*.ttf
+      - name: Deploy dry runs (nothing is published)
+        run: |
+          for to in vercel cloudflare github; do node scripts/deploy.mjs examples/deck-kit-demo/index.html --to=$to --dry-run; done

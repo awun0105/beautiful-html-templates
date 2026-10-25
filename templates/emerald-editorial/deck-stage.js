@@ -1087,6 +1087,14 @@
         const n = parseInt(h[1], 10) - 1;
         if (n >= 0 && n < this._slides.length) this._index = n;
       }
+      // #some-id opens the slide that holds that element.
+      const id = (location.hash || '').slice(1);
+      if (id && !h) {
+        let el = null;
+        try { el = document.getElementById(decodeURIComponent(id)); } catch (e) {}
+        const n = el ? this._slides.findIndex((s) => s === el || s.contains(el)) : -1;
+        if (n >= 0) this._index = n;
+      }
     }
 
     _applyIndex({ showOverlay = true, broadcast = true, reason = 'init' } = {}) {

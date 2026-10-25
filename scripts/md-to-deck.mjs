@@ -42,6 +42,7 @@
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync, readdirSync } from 'node:fs';
 import { resolve, dirname, join, basename, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { writeDeckMemory } from './lib/deck-memory.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -369,5 +370,6 @@ ${slides.map(renderSlide).join('\n\n')}
 writeFileSync(join(out, 'index.html'), page);
 copyFileSync(resolve(root, 'runtime/deck-stage.js'), join(out, 'deck-stage.js'));
 copyFileSync(resolve(root, 'runtime/deck-kit.js'), join(out, 'deck-kit.js'));
+writeDeckMemory(out, { title: deckTitle, template: theme, lang, source: process.env.DECK_SOURCE || basename(mdPath) });
 const counts = slides.reduce((m, s) => ((m[s.layout] = (m[s.layout] || 0) + 1), m), {});
 console.log(`Wrote ${join(out, 'index.html')} — ${slides.length} slides (${Object.entries(counts).map(([k, v]) => `${v} ${k}`).join(', ')}), theme "${theme}".`);

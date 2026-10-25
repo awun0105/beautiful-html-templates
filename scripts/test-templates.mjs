@@ -31,6 +31,43 @@ const pdfPages = (file) => {
 };
 const kit = (fn) => `(() => { const k = document.querySelector('#deck-kit').shadowRoot; return (${fn})(k); })()`;
 
+/** Edit mode round trip: move + retype one text element, save through a
+ *  stubbed file picker, and return how many source lines changed. */
+async function editRoundTrip(page, file, slide) {
+  const src = readFileSync(file, 'utf8');
+  await page.evaluate((src) => {
+    window.__written = null;
+    window.showOpenFilePicker = async () => [{ name: location.pathname.split('/').pop(), queryPermission: async () => 'granted',
+      getFile: async () => ({ text: async () => src }), createWritable: async () => ({ write: async (t) => { window.__written = t; }, close: async () => {} }) }];
+  }, src);
+  await page.evaluate((i) => DeckKit.goTo(i), slide);
+  await page.waitForFunction((i) => DeckKit.index === i, { timeout: 5000 }, slide).catch(() => {});
+  await page.evaluate((i) => DeckKit.settle(i, { min: 300 }), slide);   // entrance animations done
+  const box = await page.evaluate((i) => {
+    const s = DeckKit.slides[i];
+    const e = [...s.querySelectorAll('h1, h2, h3, p, li')].find((x) => {
+      const r = x.getBoundingClientRect();
+      return r.width > 40 && r.height > 8 && x.textContent.trim() && x.checkVisibility() && document.elementFromPoint(r.left + 12, r.top + r.height / 2) === x;
+    });
+    if (!e) return null;
+    const r = e.getBoundingClientRect();
+    return { x: r.left + 12, y: r.top + r.height / 2 };
+  }, slide);
+  if (!box) return { skipped: true };
+  await page.keyboard.press('e');
+  await page.mouse.move(box.x, box.y); await page.mouse.down(); await page.mouse.move(box.x + 40, box.y + 20, { steps: 4 }); await page.mouse.up();
+  await page.mouse.click(box.x + 40, box.y + 20, { clickCount: 2 });
+  await page.keyboard.type(' QA');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('e');
+  await page.waitForFunction(() => window.__written !== null, { timeout: 4000 }).catch(() => {});
+  const out = await page.evaluate(() => window.__written);
+  if (!out) return { error: await page.evaluate(() => document.querySelector('#deck-kit').shadowRoot.querySelector('.dk-toast').textContent) };
+  const a = new Set(src.split('\n')), added = out.split('\n').filter((l) => !a.has(l));
+  // The stage may be scaled, so 40 screen px is not 40 CSS px.
+  return { added: added.length, ok: /translate: \d+px \d+px/.test(out) && /QA/.test(out) };
+}
+
 let failed = 0;
 const browser = await launch();
 
@@ -78,6 +115,11 @@ for (const slug of readdirSync(resolve(root, 'templates')).sort()) {
     if (!(await page.evaluate(kit((k) => k.querySelector('.dk-blank').classList.contains('dk-show'))))) problems.push('B: no blank');
     await page.keyboard.press('b');
 
+    // Edit mode writes back only the edited tag.
+    const rt = await editRoundTrip(page, resolve(root, 'templates', slug, 'template.html'), Math.min(1, info.n - 1));
+    if (rt.error) problems.push('edit save: ' + rt.error);
+    else if (!rt.skipped && (!rt.ok || rt.added > 3)) problems.push(`edit round trip: ${rt.added} new lines${rt.ok ? '' : ', change missing'}`);
+
     await page.evaluate(() => DeckKit.visitAll({ settle: 60 }));
     await page.evaluate(() => DeckKit.preparePrint());
     await page.emulateMediaType('print');
@@ -118,6 +160,30 @@ if (!only || only === "demo") {
   await page.evaluate(() => document.activeElement.blur());
   ok('bind updates <output>', await page.evaluate(() => [...document.querySelectorAll('output')].some((o) => o.textContent.trim() !== '')));
   ok('palette reads template colours', await page.evaluate(() => DeckKit.palette(document.querySelector('canvas')).accents.length >= 3));
+
+  // Links between slides and #id deep links.
+  {
+    const lp = await openDeck(browser, demo, { width: 1600, height: 900 });
+    const at = await lp.evaluate(() => { const r = document.querySelector('a[href^="#"]').getBoundingClientRect(); return { x: r.left + 8, y: r.top + r.height / 2, id: document.querySelector('a[href^="#"]').getAttribute('href') }; });
+    await lp.mouse.click(at.x, at.y);
+    await sleep(600);
+    const want = await lp.evaluate((id) => DeckKit.slides.findIndex((s) => s.id === id.slice(1)), at.id);
+    ok('<a href="#id"> jumps to its slide', want > 0 && (await lp.evaluate(() => DeckKit.index)) === want);
+    await lp.close();
+    const dp = await openDeck(browser, demo, { width: 1600, height: 900, hash: at.id });
+    await sleep(300);
+    ok('#id deep link opens that slide', (await dp.evaluate(() => DeckKit.index)) === want);
+    // K: copy an element's location, without moving the deck.
+    await dp.evaluate(() => DeckKit.goTo(1)); await sleep(500);
+    const h = await dp.evaluate(() => { const r = DeckKit.slides[1].querySelector('h2').getBoundingClientRect(); return { x: r.left + 20, y: r.top + 15 }; });
+    await dp.keyboard.press('k'); await dp.mouse.click(h.x, h.y); await sleep(600);
+    const toast = await dp.evaluate(() => document.querySelector('#deck-kit').shadowRoot.querySelector('.dk-toast').textContent);
+    ok('K copies file, slide and element', /index\.html.*slide 2.*<h2>/.test(toast) && (await dp.evaluate(() => DeckKit.index)) === 1, toast.slice(0, 90));
+    // Edit mode on the demo: one line changes; undo works.
+    const rt = await editRoundTrip(dp, demo, 1);
+    ok('edit mode saves only the edited tag', rt.ok && rt.added <= 2, JSON.stringify(rt));
+    await dp.close();
+  }
 
   // Presenter view: popup with notes; navigation flows both ways.
   const popup = browser.waitForTarget((t) => t.url().includes('dk=presenter'), { timeout: 8000 }).catch(() => null);
@@ -219,6 +285,26 @@ if (!only || only === "demo") {
   await fresh.evaluate(() => DeckKit.cleanupPrint());
   ok('no console errors', !page._errors.length && !fresh._errors.length, [...page._errors, ...fresh._errors].join(' | '));
   await page.close(); await fresh.close();
+}
+
+// ── Tools: PowerPoint import, deploy dry run ───────────────────────────────
+if (!only || only === 'tools') {
+  const ok = (name, cond, extra = '') => { if (!cond) failed++; console.log(`${cond ? 'ok  ' : 'FAIL'} tools: ${name} ${extra}`); };
+  const imp = join(out, 'pptx-import');
+  let log = '';
+  try { log = execSync(`node "${resolve(root, 'scripts/pptx-to-deck.mjs')}" "${resolve(root, 'tests/fixtures/sample.pptx')}" --theme=vellum --out="${imp}"`, { encoding: 'utf8' }); } catch (e) { log = String(e.stdout || e.message); }
+  const md = (() => { try { return readFileSync(join(imp, 'source/talk.md'), 'utf8'); } catch { return ''; } })();
+  ok('pptx import: 6 slides, hidden one skipped', /Imported 6 slides/.test(log), log.split('\n')[0]);
+  ok('pptx import: bullets, levels, table, picture, notes, columns',
+    /\n  - GPS jumps/.test(md) && /\| KF \| no \| low \|/.test(md) && /!\[[^\]]*\]\(media\//.test(md) && /Note: Welcome everyone/.test(md) && /\n\|\|\|\n/.test(md));
+  if (md) {
+    const pg = await openDeck(browser, join(imp, 'index.html'), { width: 1280, height: 720 });
+    ok('imported deck boots with notes', (await pg.evaluate(() => DeckKit.length)) === 6 && /GPS story/.test(await pg.evaluate(() => DeckKit.notesOf(0))));
+    await pg.close();
+  }
+  let dry = '';
+  try { dry = execSync(`node "${resolve(root, 'scripts/deploy.mjs')}" "${resolve(root, 'examples/deck-kit-demo/index.html')}" --to=cloudflare --name="Bộ lọc demo" --preview --dry-run`, { encoding: 'utf8' }); } catch (e) { dry = String(e.stdout || e.message); }
+  ok('deploy dry run builds one file and names the project', /--project-name=bo-loc-demo --branch=preview/.test(dry) && /nothing was published/.test(dry));
 }
 
 await browser.close();

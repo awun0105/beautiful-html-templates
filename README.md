@@ -21,6 +21,9 @@ Every template ships with [`deck-kit.js`](./runtime/deck-kit.js), a presenter la
 - **In the room**: black/white screen (`B`/`W`), laser pointer (`L`), draw on slides (`D`), fullscreen (`F`), `#N` deep links, swipe.
 - **Interactive slides**: `DeckKit.widget()` with `DeckKit.plot()` / `DeckKit.bind()` for live charts and sliders in the template's colours; `data-reveal` answers, `data-countdown` timers.
 - **Print** (`Ctrl+P`): every slide visited first so charts fill in, then one slide per page, canvases included.
+- **Edit mode** (`E`): move, resize, retype or hide elements right on the slide; `E` again saves into the HTML file, touching only what you changed.
+- **Point at things for your agent** (`K`): click an element to copy its file, line, slide and selector.
+- **Links between slides**: `<a href="#slide-id">` jumps there, also in the PDF.
 
 See [`examples/deck-kit-demo`](./examples/deck-kit-demo/index.html) and [`AGENTS.md` § 8](./AGENTS.md#8-presenter-features-deck-kitjs).
 
@@ -30,11 +33,13 @@ See [`examples/deck-kit-demo`](./examples/deck-kit-demo/index.html) and [`AGENTS
 npm install                                             # once (uses your installed Chrome)
 node scripts/new-deck.mjs vellum my-talk --lang=vi      # start from a template
 node scripts/md-to-deck.mjs talk.md --theme=vellum      # or write it in Markdown
+node scripts/pptx-to-deck.mjs talk.pptx --theme=vellum  # or import a PowerPoint
 node scripts/check-deck.mjs my-talk/index.html          # lint before presenting
 node scripts/export.mjs my-talk/index.html              # PDF + PNGs + handout with notes
 node scripts/export.mjs my-talk/index.html --compact --pptx   # small PDF, PowerPoint with notes
 node scripts/export.mjs my-talk/index.html --pptx-editable    # PowerPoint with editable text (+ fonts/ to install)
 node scripts/bundle.mjs my-talk/index.html              # one offline .html file
+node scripts/deploy.mjs my-talk/index.html --to=vercel   # or cloudflare / github → a shareable link
 ```
 
 Details in [`AGENTS.md` § 9](./AGENTS.md#9-tools-scripts).
@@ -386,3 +391,9 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
 ## License
 
 [MIT](./LICENSE) — free to use, modify, and distribute.
+
+## Credits
+
+- Content-density and anti-"AI slop" guidance and the idea of PowerPoint import come from [frontend-slides](https://github.com/zarazhangrui/frontend-slides) (MIT, Zara Zhang).
+- In-browser editing that writes straight into the deck file and `#id` slide links were inspired by [ai-deck-builder](https://github.com/Faris-Alanazi/ai-deck-builder) (MIT).
+

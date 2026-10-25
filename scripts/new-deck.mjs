@@ -6,13 +6,15 @@
  *
  * Copies the template folder (without previews/), names the page index.html,
  * refreshes the runtime files from runtime/, sets <html lang> and <title>, and
- * empties the template's demo speaker notes so they can't leak into a talk.
+ * empties the template's demo speaker notes so they can't leak into a talk,
+ * and writes CLAUDE.md — the deck's memory for agents (see lib/deck-memory.mjs).
  * Prints the next steps (fill content → check → export).
  */
 
 import { cpSync, existsSync, readFileSync, writeFileSync, renameSync, readdirSync, rmSync, copyFileSync } from 'node:fs';
 import { resolve, dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { writeDeckMemory } from './lib/deck-memory.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -57,15 +59,18 @@ if (opt.title) {
 // Demo notes describe the template, not the user's talk.
 html = html.replace(/(<script[^>]*id=["']speaker-notes["'][^>]*>)[\s\S]*?(<\/script>)/i, '$1[]$2');
 writeFileSync(join(dest, 'index.html'), html);
+const memory = writeDeckMemory(dest, {
+  title: opt.title || (html.match(/<title>([^<]*)<\/title>/i) || [, slug])[1], template: slug,
+  lang: opt.lang || (html.match(/<html[^>]*\slang="([^"]+)"/i) || [, 'en'])[1],
+});
 
-const rel = (p) => relative(process.cwd(), p) || '.';
-const tool = (s) => {
-  const p = resolve(root, 'scripts', s);
-  return `node ${rel(p).startsWith('..') ? p : rel(p)}`;
-};
+// Relative paths when the deck is under the current folder, absolute otherwise.
+const rel = (p) => { const r = relative(process.cwd(), p) || '.'; return r.startsWith('..') ? p : r; };
+const tool = (s) => `node ${rel(resolve(root, 'scripts', s))}`;
 console.log(`Created ${rel(dest)}/ from "${slug}".
 
 Next:
+  0. Fill in ${rel(join(dest, 'CLAUDE.md'))} — the deck's memory for agents (purpose, audience, voice, rules).
   1. Edit ${rel(join(dest, 'index.html'))} — replace the demo content (see AGENTS.md §3),
      add data-title / data-sec / data-min and <aside class="notes"> per slide (§8).
   2. Check:   ${tool('check-deck.mjs')} ${rel(join(dest, 'index.html'))}
