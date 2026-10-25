@@ -9,6 +9,14 @@
  *   --repo=owner/slides  GitHub Pages only: repo that holds all your decks
  *                        (default: <your-login>/slides, created public if missing)
  *   --dry-run            build and show the commands without publishing
+ *   --force              publish even if the name belongs to a different deck
+ *
+ * Overwrite guard: each deck has an id (a hash of its real file path — the
+ * path itself is never published). The id is stamped into the published file
+ * and remembered in ~/.config/deck-kit/deployments.json. Re-deploying the same
+ * deck updates its link silently; if a DIFFERENT deck already uses that name
+ * (seen locally, or in the live copy online), deploy asks before overwriting
+ * (and refuses when there's no terminal to ask — use --name or --force).
  *
  * What goes online is ONE self-contained file built by bundle.mjs (scripts,
  * images and fonts inlined) — never the rest of the deck folder (CLAUDE.md,
@@ -23,9 +31,11 @@
  *               --preview → …/<name>-preview/ ; each deploy overwrites that folder
  */
 
-import { mkdirSync, mkdtempSync, copyFileSync, existsSync, writeFileSync, readdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, copyFileSync, existsSync, writeFileSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { resolve, dirname, join, basename, extname } from 'node:path';
-import { tmpdir } from 'node:os';
+import { tmpdir, homedir } from 'node:os';
+import { createHash } from 'node:crypto';
+import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
@@ -38,7 +48,7 @@ const opt = Object.fromEntries(args.filter((a) => a.startsWith('--')).map((a) =>
 const input = args.find((a) => !a.startsWith('--'));
 const to = String(opt.to || '').toLowerCase();
 if (!input || !/^(vercel|cloudflare|github)$/.test(to)) {
-  console.error('Usage: node scripts/deploy.mjs <deck.html> --to=vercel|cloudflare|github [--name=…] [--preview] [--repo=owner/slides] [--dry-run]');
+  console.error('Usage: node scripts/deploy.mjs <deck.html> --to=vercel|cloudflare|github [--name=…] [--preview] [--repo=owner/slides] [--dry-run] [--force]');
   process.exit(1);
 }
 const deck = resolve(input);
@@ -61,6 +71,44 @@ function run(cmd, cmdArgs, { capture = false, allowFail = false, cwd } = {}) {
 }
 const quiet = (cmd, cmdArgs) => spawnSync(cmd, cmdArgs, { shell: isWin, encoding: 'utf8' });
 
+// ── Overwrite guard ───────────────────────────────────────────────────────
+const deckId = createHash('sha256').update(realpathSync(deck)).digest('hex').slice(0, 16);
+const regFile = join(process.env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'deck-kit', 'deployments.json');
+const registry = (() => { try { return JSON.parse(readFileSync(regFile, 'utf8')); } catch { return {}; } })();
+const idIn = (html) => ((html || '').match(/<meta name="deck-kit-id" content="([^"]+)"/) || [])[1] || null;
+async function guard(key, liveHtml, where) {
+  const local = registry[key];
+  const remoteId = idIn(liveHtml);
+  let other = null;
+  if (local && local.id !== deckId) other = `${local.deck} (published ${String(local.at).slice(0, 10)})`;
+  else if (remoteId && remoteId !== deckId) other = 'another deck (published from somewhere else)';
+  if (!other) return;
+  console.log(`\n⚠ "${where}" already holds a different deck:\n    ${other}\n  Publishing would replace it with:\n    ${deck}`);
+  if (opt.force) { console.log('  --force given: replacing it.'); return; }
+  if (dry) { console.log('  (dry run: a real deploy would stop here and ask)'); return; }
+  if (!process.stdin.isTTY) {
+    console.error(`\nStopped. Pick another name with --name=<new-name>, or add --force to replace it.`);
+    process.exit(2);
+  }
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const ans = (await rl.question('  Overwrite it? [y/N] ')).trim().toLowerCase();
+  rl.close();
+  if (ans !== 'y' && ans !== 'yes') { console.log('Cancelled — nothing was published. Use --name=<new-name> for a separate link.'); process.exit(2); }
+}
+async function fetchLive(url) {
+  if (dry && process.env.DECK_DEPLOY_OFFLINE) return null;
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(6000), redirect: 'follow' });
+    return r.ok ? await r.text() : null;
+  } catch { return null; }
+}
+function remember(key, url) {
+  if (dry) return;
+  registry[key] = { id: deckId, deck: realpathSync(deck), url, at: new Date().toISOString() };
+  mkdirSync(dirname(regFile), { recursive: true });
+  writeFileSync(regFile, JSON.stringify(registry, null, 2) + '\n');
+}
+
 // ── 1. Build one self-contained file ──────────────────────────────────────
 const work = mkdtempSync(join(tmpdir(), 'deck-deploy-'));
 const dist = join(work, name);            // folder name = project name for Vercel
@@ -69,6 +117,12 @@ console.log(`Building ${name} …`);
 const b = spawnSync(process.execPath, [resolve(root, 'scripts/bundle.mjs'), deck, join(dist, 'index.html')], { encoding: 'utf8' });
 if (b.status !== 0) { console.error(b.stderr || b.stdout); process.exit(1); }
 console.log('  ' + b.stdout.trim().split('\n')[0]);
+// Stamp the deck id (not its path) so a later deploy can recognise the live copy.
+{
+  const f = join(dist, 'index.html');
+  const html = readFileSync(f, 'utf8');
+  writeFileSync(f, html.replace(/<head([^>]*)>/i, `<head$1>\n<meta name="deck-kit-id" content="${deckId}">`));
+}
 if (/Still remote/.test(b.stdout)) console.log('  ' + b.stdout.trim().split('\n').slice(1).join('\n  '));
 
 // ── 2. Publish ────────────────────────────────────────────────────────────
@@ -78,9 +132,12 @@ if (to === 'vercel') {
     console.error('Not logged in to Vercel. Run `npx vercel login` once, then deploy again.');
     process.exit(1);
   }
+  // Preview URLs are unique per deploy, so only the main link can be overwritten.
+  if (!preview) await guard(`vercel:${name}`, await fetchLive(`https://${name}.vercel.app`), `https://${name}.vercel.app`);
   console.log(preview ? 'Deploying a preview to Vercel …' : 'Deploying to Vercel (production) …');
   const r = run('npx', ['--yes', 'vercel', 'deploy', dist, '--yes', ...(preview ? [] : ['--prod'])], { capture: true });
   url = (r.stdout.match(/https:\/\/\S+/g) || []).pop() || '';
+  if (!preview) remember(`vercel:${name}`, url);
   if (!preview && url) url += `  (main link: https://${name}.vercel.app unless the name was taken)`;
 }
 
@@ -89,11 +146,14 @@ if (to === 'cloudflare') {
     console.error('Not logged in to Cloudflare. Run `npx wrangler login` once, then deploy again.');
     process.exit(1);
   }
+  const live = preview ? `https://preview.${name}.pages.dev` : `https://${name}.pages.dev`;
+  await guard(`cloudflare:${name}${preview ? ':preview' : ''}`, await fetchLive(live), live);
   console.log('Deploying to Cloudflare Pages …');
   run('npx', ['--yes', 'wrangler', 'pages', 'project', 'create', name, '--production-branch=main'], { allowFail: true });
   const r = run('npx', ['--yes', 'wrangler', 'pages', 'deploy', dist, `--project-name=${name}`, `--branch=${preview ? 'preview' : 'main'}`, '--commit-dirty=true'], { capture: true });
   if (!dry) process.stdout.write(r.stdout);
-  url = preview ? `https://preview.${name}.pages.dev` : `https://${name}.pages.dev`;
+  url = live;
+  remember(`cloudflare:${name}${preview ? ':preview' : ''}`, url);
 }
 
 if (to === 'github') {
@@ -110,6 +170,8 @@ if (to === 'github') {
   }
   const clone = join(work, 'repo');
   run('gh', ['repo', 'clone', repo, clone, '--', '--depth', '1'], { allowFail: !exists });
+  const existing = join(clone, folder, 'index.html');
+  await guard(`github:${repo}/${folder}`, existsSync(existing) ? readFileSync(existing, 'utf8') : null, `${repo}/${folder}`);
   if (!dry) {
     mkdirSync(join(clone, folder), { recursive: true });
     copyFileSync(join(dist, 'index.html'), join(clone, folder, 'index.html'));
@@ -128,7 +190,9 @@ if (to === 'github') {
   if (!dry) quiet('gh', ['api', `repos/${repo}/pages`, '-X', 'POST', '-f', 'source[branch]=main', '-f', 'source[path]=/']);
   else console.log(`  $ gh api repos/${repo}/pages -X POST -f source[branch]=main -f source[path]=/`);
   const site = repoName.toLowerCase() === `${owner.toLowerCase()}.github.io` ? `https://${owner.toLowerCase()}.github.io` : `https://${owner.toLowerCase()}.github.io/${repoName}`;
-  url = `${site}/${folder}/  (GitHub Pages can take a minute to update)`;
+  url = `${site}/${folder}/`;
+  remember(`github:${repo}/${folder}`, url);
+  url += '  (GitHub Pages can take a minute to update)';
 }
 
 console.log(dry ? `\nDry run — nothing was published. Built file: ${join(dist, 'index.html')}` : `\nPublished: ${url}`);

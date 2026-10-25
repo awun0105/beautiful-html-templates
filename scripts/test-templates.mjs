@@ -309,6 +309,23 @@ if (!only || only === 'tools') {
   }
   let dry = '';
   try { dry = execSync(`node "${resolve(root, 'scripts/deploy.mjs')}" "${resolve(root, 'examples/deck-kit-demo/index.html')}" --to=cloudflare --name="Bộ lọc demo" --preview --dry-run`, { encoding: 'utf8' }); } catch (e) { dry = String(e.stdout || e.message); }
+  // Overwrite guard, exercised with a fake npx (nothing reaches Cloudflare).
+  {
+    const tmp = mkdtempSync(join(tmpdir(), 'deck-guard-'));
+    mkdirSync(join(tmp, 'bin')); mkdirSync(join(tmp, 'cfg', 'deck-kit'), { recursive: true });
+    writeFileSync(join(tmp, 'bin', 'npx'), '#!/bin/sh\necho "[fake npx] $*" >&2\nexit 0\n', { mode: 0o755 });
+    writeFileSync(join(tmp, 'cfg', 'deck-kit', 'deployments.json'), JSON.stringify({ 'cloudflare:deck-kit-demo': { id: '0000000000000000', deck: '/elsewhere/index.html', at: '2026-01-01' } }));
+    const env = { ...process.env, PATH: `${join(tmp, 'bin')}:${process.env.PATH}`, XDG_CONFIG_HOME: join(tmp, 'cfg') };
+    const cmd = `node "${resolve(root, 'scripts/deploy.mjs')}" "${resolve(root, 'examples/deck-kit-demo/index.html')}" --to=cloudflare`;
+    let stopped = false;
+    try { execSync(cmd, { env, stdio: ['ignore', 'pipe', 'pipe'] }); } catch (e) { stopped = e.status === 2 && /already holds a different deck/.test(String(e.stdout)); }
+    ok('deploy refuses to overwrite a different deck without a terminal', stopped);
+    let forced = '';
+    try { forced = execSync(cmd + ' --force', { env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); } catch (e) { forced = String(e.stdout); }
+    const reg = JSON.parse(readFileSync(join(tmp, 'cfg', 'deck-kit', 'deployments.json'), 'utf8'));
+    ok('--force replaces it and remembers the new deck', /Published/.test(forced) && /deck-kit-demo\/index\.html$/.test(reg['cloudflare:deck-kit-demo'].deck));
+    rmSync(tmp, { recursive: true, force: true });
+  }
   ok('deploy dry run builds one file and names the project', /--project-name=bo-loc-demo --branch=preview/.test(dry) && /nothing was published/.test(dry));
 }
 
