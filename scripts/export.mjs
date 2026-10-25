@@ -13,6 +13,9 @@
  *   --pptx           slides.pptx — one full-slide image per slide, speaker
  *                    notes in PowerPoint's notes pane (opens in PowerPoint,
  *                    Keynote, Google Slides; text is not editable)
+ *   --pptx-editable  slides-editable.pptx — real PowerPoint text boxes over a
+ *                    picture of each slide's design, plus fonts/ to install
+ *                    (experimental: needs the deck's fonts on the viewer's machine)
  *   --size=1920x1080 render size for images (default 1920x1080)
  *   --quality=85     JPEG quality for --compact / --pptx
  *   --settle=400     minimum ms on each slide; it then waits until the slide
@@ -26,6 +29,7 @@
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { resolve, dirname, basename, join } from 'node:path';
 import { launch, openDeck, showSlide, sleep } from './lib/browser.mjs';
+import { buildEditablePptx } from './lib/pptx-editable.mjs';
 
 const args = process.argv.slice(2);
 const opt = Object.fromEntries(args.filter((a) => a.startsWith('--')).map((a) => {
@@ -34,11 +38,11 @@ const opt = Object.fromEntries(args.filter((a) => a.startsWith('--')).map((a) =>
 }));
 const file = args.find((a) => !a.startsWith('--'));
 if (!file) {
-  console.error('Usage: node scripts/export.mjs <deck.html> [--pdf] [--png] [--handout] [--compact] [--pptx] [--out=DIR] [--size=1920x1080] [--quality=85] [--settle=400]');
+  console.error('Usage: node scripts/export.mjs <deck.html> [--pdf] [--png] [--handout] [--compact] [--pptx] [--pptx-editable] [--out=DIR] [--size=1920x1080] [--quality=85] [--settle=400]');
   process.exit(1);
 }
 const deck = resolve(file);
-const want = { pdf: !!opt.pdf, png: !!opt.png, handout: !!opt.handout, compact: !!opt.compact, pptx: !!opt.pptx };
+const want = { pdf: !!opt.pdf, png: !!opt.png, handout: !!opt.handout, compact: !!opt.compact, pptx: !!opt.pptx, editable: !!opt['pptx-editable'] };
 if (!Object.values(want).some(Boolean)) want.pdf = want.png = want.handout = true;
 const quality = Math.max(30, Math.min(100, +(opt.quality || 85)));
 const [W, H] = String(opt.size || '1920x1080').split('x').map(Number);
@@ -53,11 +57,23 @@ const lang = await page.evaluate(() => document.documentElement.lang || 'en');
 const title = await page.evaluate(() => document.title || '');
 const done = [];
 
+// Slide titles and notes (HTML for the handout, plain text for PowerPoint).
+const meta = await page.evaluate(() => DeckKit.slides.map((s, i) => {
+  const d = document.createElement('div');
+  d.innerHTML = DeckKit.notesOf(i).replace(/<br\s*\/?>|<\/(p|li|div)>/gi, '\n$&');
+  return {
+    title: DeckKit.titleOf(i), notes: DeckKit.notesOf(i), notesText: d.textContent.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim(),
+    sec: s.getAttribute('data-sec') || '', min: s.getAttribute('data-min') || '',
+  };
+}));
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
 // ── Screenshots (PNG files, handout, compact PDF, PPTX) ────────────────────
 const shots = [];   // PNG per slide
 const jpegs = [];   // JPEG per slide
 const needPng = want.png || want.handout, needJpeg = want.compact || want.pptx;
-if (needPng || needJpeg) {
+let editable = null;
+if (needPng || needJpeg || want.editable) {
   // Hide presenter chrome and the template's fixed controls (dots, counters,
   // deck-stage's pill) so images show only the slide.
   await page.evaluate(() => {
@@ -73,7 +89,7 @@ if (needPng || needJpeg) {
       if (getComputedStyle(e).position === 'fixed') e.classList.add('dk-export-hide');
     });
   });
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < (needPng || needJpeg ? n : 0); i++) {
     await showSlide(page, i, settle);
     if (needPng) {
       const buf = Buffer.from(await page.screenshot({ type: 'png' }));
@@ -83,6 +99,10 @@ if (needPng || needJpeg) {
     if (needJpeg) jpegs.push(Buffer.from(await page.screenshot({ type: 'jpeg', quality })));
   }
   if (want.png) done.push(`${n} PNG files`);
+  if (want.editable) {
+    editable = await buildEditablePptx({ page, n, W, H, settle, meta, title, out, lang });
+    done.push(`slides-editable.pptx (${editable.boxes} text boxes, ${editable.images} pictures; fonts/: ${editable.fonts.got.length} downloaded${editable.fonts.missing.length ? `, missing ${editable.fonts.missing.join(', ')}` : ''})`);
+  }
   await page.evaluate(() => {
     document.getElementById('export-hide').remove();
     document.querySelectorAll('.dk-export-hide').forEach((e) => e.classList.remove('dk-export-hide'));
@@ -102,16 +122,6 @@ if (want.pdf) {
   done.push('slides.pdf');
 }
 
-// Slide titles and notes (HTML for the handout, plain text for PowerPoint).
-const meta = await page.evaluate(() => DeckKit.slides.map((s, i) => {
-  const d = document.createElement('div');
-  d.innerHTML = DeckKit.notesOf(i).replace(/<br\s*\/?>|<\/(p|li|div)>/gi, '\n$&');
-  return {
-    title: DeckKit.titleOf(i), notes: DeckKit.notesOf(i), notesText: d.textContent.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim(),
-    sec: s.getAttribute('data-sec') || '', min: s.getAttribute('data-min') || '',
-  };
-}));
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // ── Compact PDF: one JPEG per page ─────────────────────────────────────────
 if (want.compact) {

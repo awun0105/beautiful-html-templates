@@ -224,7 +224,7 @@ Every template loads `deck-kit.js` after its own navigation script. It finds the
 | Key / action | What it does |
 |---|---|
 | `←` `→` Space PgUp/PgDn Home End `1`–`9` | Navigate. Presses during a template's slide transition are queued, not dropped |
-| `P` | **Presenter view**: a second window with current + next slide, notes, timer and plan. Put it on the laptop, keep the original window on the projector (displays in *extend* mode). Sliders, inputs and revealed answers stay in sync both ways — you can drive a demo from the laptop's preview |
+| `P` | **Presenter view**: a second window with current + next slide, notes, timer and plan. Put it on the laptop, keep the original window on the projector (displays in *extend* mode). Sliders, inputs and revealed answers stay in sync both ways — you can drive a demo from the laptop's preview. **✎ Edit** turns the notes into an editor (changes show at once and survive a reload as a draft); **💾 Save to file** writes them into the deck's HTML (Chrome/Edge: pick the deck file once; other browsers get `notes.json` for `scripts/apply-notes.mjs`) |
 | `N` | Speaker-notes panel on this screen (use `P` when the screen is projected) |
 | `M` | Slide menu grouped by section, with planned start minute; click to jump |
 | `T` / `Shift+T` | Talk timer (elapsed vs. plan, ahead / on time / behind); reset. Click it to pause |
@@ -310,7 +310,18 @@ Run `npm install` once in the repo root (installs `puppeteer-core`; it uses the 
 | `node scripts/new-deck.mjs <slug> <dir> [--lang=vi] [--title=…]` | Start a deck from a template |
 | `node scripts/md-to-deck.mjs talk.md --theme=<slug>` | Markdown → working deck in standard layouts, dressed in the template's fonts and palette (see `examples/md-deck/talk.md`). Use it to get content and timing right fast; move slides into the template's own layouts for the final look |
 | `node scripts/check-deck.mjs <deck.html> [--strict]` | Lint: placeholders, broken images, JS errors (errors); overflow, clipping, missing titles/notes/minutes (warnings) |
-| `node scripts/export.mjs <deck.html> [--pdf] [--png] [--handout] [--compact] [--pptx]` | `slides.pdf`, `slide-NN.png`, an A4 `handout.pdf` with notes under each slide; `--compact` = small image-based PDF for e-mail; `--pptx` = PowerPoint with one slide image per slide and the speaker notes in the notes pane (not editable text). Each slide is captured once its entry animations finish |
+| `node scripts/export.mjs <deck.html> [--pdf] [--png] [--handout] [--compact] [--pptx] [--pptx-editable]` | `slides.pdf`, `slide-NN.png`, an A4 `handout.pdf` with notes under each slide; `--compact` = small image-based PDF for e-mail; `--pptx` = PowerPoint with one slide image per slide and the speaker notes in the notes pane; `--pptx-editable` = real PowerPoint text boxes over a picture of the design, `<img>` as separate pictures, plus `fonts/` (TTF) to install — see below. Each slide is captured once its entry animations finish |
+| `node scripts/apply-notes.mjs <deck.html> notes.json` | Merge notes saved from the presenter view in browsers without direct file access; only the edited `<aside class="notes">` lines change |
 | `node scripts/bundle.mjs <deck.html> [--all-subsets]` | One self-contained offline `.html` with fonts embedded |
 | `node scripts/sync-runtime.mjs [--check]` | Copy `runtime/` into every template (edit runtime files only in `runtime/`) |
 | `npm test` | Runtime-copy check + headless test of all templates and the demo (also runs in GitHub Actions) |
+
+### Editable PowerPoint (`--pptx-editable`, experimental)
+
+Each slide becomes a background picture with the text hidden (decoration, charts and canvases stay exact), separate pictures for `<img>`, and editable text boxes with the same font, size, colour, weight, italics, letter spacing, line height and sub/superscript. Notes go to the notes pane. Things to tell the user:
+
+- **Install the fonts in `fonts/` first** (instructions inside). Without them PowerPoint substitutes a font and lines wrap differently.
+- Rotated text, gradient-filled text, text inside SVG and `aria-hidden` decoration stay in the background picture (not editable).
+- Variable fonts with an optical-size axis (e.g. Source Serif 4, DM Sans) render a little wider in PowerPoint than in the browser at large sizes — leave room or shorten headlines.
+- Charts, shapes and decoration are pictures: text is editable, the design is not.
+

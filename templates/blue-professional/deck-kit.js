@@ -59,6 +59,11 @@
       printing: 'Preparing print… {i}/{n}', popup: 'Allow pop-ups to open the presenter view',
       presenter: 'Presenter view', waiting: 'Waiting for the audience window…', lost: 'Audience window closed',
       current: 'Current', drawOn: 'Drawing — C clears, Esc stops', laserOn: 'Laser pointer — L to stop',
+      edit: '✎ Edit', done: '✓ Done', saveFile: '💾 Save to file', unsaved: '{n} unsaved', saved: 'Notes saved to {f}',
+      nothing: 'No note changes to save', restored: 'Restored {n} unsaved note edit(s) — press P, then Save',
+      otherFile: 'You picked "{a}" but this deck is "{b}". Write to it anyway?',
+      downloaded: 'Saved notes.json — merge it with: node scripts/apply-notes.mjs <deck.html> notes.json',
+      saveFailed: 'Could not save: {e}', pickDeck: 'Pick this deck\'s own HTML file to save into',
       keys: [['← → 1–9', 'Navigate'], ['P', 'Presenter view (2nd window)'], ['N', 'Speaker notes'], ['M', 'Slide menu'],
         ['T', 'Talk timer (Shift+T reset)'], ['B / W', 'Black / white screen'], ['L', 'Laser pointer'],
         ['D', 'Draw (C clear, Backspace undo)'], ['F', 'Fullscreen'], ['Ctrl+P', 'Print every slide'], ['Esc', 'Close panels'], ['?', 'This help']],
@@ -73,6 +78,11 @@
       printing: 'Đang chuẩn bị in… {i}/{n}', popup: 'Hãy cho phép cửa sổ bật lên (pop-up) để mở màn hình người trình bày',
       presenter: 'Màn hình người trình bày', waiting: 'Đang chờ cửa sổ trình chiếu…', lost: 'Cửa sổ trình chiếu đã đóng',
       current: 'Hiện tại', drawOn: 'Đang vẽ — C xoá, Esc thoát', laserOn: 'Con trỏ laser — bấm L để tắt',
+      edit: '✎ Sửa', done: '✓ Xong', saveFile: '💾 Lưu vào file', unsaved: '{n} chưa lưu', saved: 'Đã lưu ghi chú vào {f}',
+      nothing: 'Không có ghi chú nào thay đổi', restored: 'Đã khôi phục {n} ghi chú chưa lưu — bấm P rồi Lưu',
+      otherFile: 'Bạn chọn "{a}" nhưng deck này là "{b}". Vẫn ghi vào file đó?',
+      downloaded: 'Đã tải notes.json — ghép vào deck bằng: node scripts/apply-notes.mjs <deck.html> notes.json',
+      saveFailed: 'Không lưu được: {e}', pickDeck: 'Chọn chính file HTML của deck này để lưu',
       keys: [['← → 1–9', 'Chuyển slide'], ['P', 'Màn hình người trình bày (cửa sổ 2)'], ['N', 'Ghi chú người nói'], ['M', 'Menu các slide'],
         ['T', 'Đồng hồ (Shift+T đặt lại)'], ['B / W', 'Màn hình đen / trắng'], ['L', 'Con trỏ laser'],
         ['D', 'Vẽ lên slide (C xoá, Backspace hoàn tác)'], ['F', 'Toàn màn hình'], ['Ctrl+P', 'In mọi slide'], ['Esc', 'Đóng bảng'], ['?', 'Bảng này']],
@@ -176,7 +186,14 @@
     .dk-pv .dk-frame.dk-end .dk-endcard { display: grid; }
     .dk-pv .dk-frame.dk-end iframe { visibility: hidden; }
     .dk-pv .dk-pnotes { flex: 1; min-height: 0; overflow: auto; background: rgba(148,163,184,.08); border-radius: 10px; padding: 14px 18px; }
-    .dk-pv .dk-pnotes .dk-tx { font-size: 22px; }
+    .dk-pv .dk-pnotes .dk-tx { font-size: 22px; min-height: 2em; outline: none; }
+    .dk-pv .dk-pnotes.dk-editing { box-shadow: inset 0 0 0 2px #3B82F6; background: rgba(59,130,246,.08); }
+    .dk-pv .dk-nrow { display: flex; align-items: baseline; gap: 10px; }
+    .dk-pv .dk-nrow .dk-lbl { margin: 0; flex: 1; }
+    .dk-pv .dk-nrow button { font: 600 13px system-ui, sans-serif; color: #fff; background: rgba(148,163,184,.16); border: 0;
+      border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+    .dk-pv .dk-nrow button:hover { background: rgba(148,163,184,.3); }
+    .dk-pv .dk-nstat { font-size: 12px; color: #FBBF24; }
     .dk-pv .dk-bar { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; }
     .dk-pv .dk-bar button { font: 600 15px inherit; font-family: inherit; color: #fff; background: rgba(148,163,184,.16); border: 0;
       border-radius: 8px; padding: 8px 16px; cursor: pointer; }
@@ -896,7 +913,8 @@
       <div class="dk-main"><div class="dk-lbl">${esc(L.current)}</div><div class="dk-frame dk-cur"><iframe title="current"></iframe></div></div>
       <div class="dk-side">
         <div><div class="dk-lbl">${esc(L.next)}</div><div class="dk-frame dk-nx"><iframe title="next"></iframe><div class="dk-endcard">${esc(L.end)}</div></div></div>
-        <div class="dk-lbl">${esc(L.notes)} <span class="dk-meta"></span></div>
+        <div class="dk-nrow"><div class="dk-lbl">${esc(L.notes)} <span class="dk-meta"></span></div>
+          <span class="dk-nstat"></span><button data-n="edit">${esc(L.edit)}</button><button data-n="save">${esc(L.saveFile)}</button></div>
         <div class="dk-pnotes"><div class="dk-tx"></div></div>
       </div>
       <div class="dk-bar"><button data-a="prev">◀</button><button data-a="next">▶</button><button data-a="black">B</button>
@@ -911,8 +929,21 @@
       title: box.querySelector('.dk-title'), clock: box.querySelector('.dk-clock'), status: box.querySelector('.dk-status'),
       msg: box.querySelector('.dk-msg'), notes: box.querySelector('.dk-pnotes .dk-tx'), meta: box.querySelector('.dk-meta'),
       pos: box.querySelector('.dk-pos'), nxFrame: box.querySelector('.dk-nx'),
+      notesBox: box.querySelector('.dk-pnotes'), nstat: box.querySelector('.dk-nstat'), editBtn: box.querySelector('[data-n="edit"]'),
     };
     pv.clock.addEventListener('click', () => timerCmd('pause'));
+    pv.editBtn.addEventListener('click', () => setEditing(!editing));
+    box.querySelector('[data-n="save"]').addEventListener('click', saveNotesToFile);
+    let typingTimer = null;
+    pv.notes.addEventListener('input', () => {
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(() => {
+        const html = pv.notes.textContent.trim() ? pv.notes.innerHTML.trim() : '';
+        editNotes(cur, html);
+        send(window.opener, { dk: 'notes', slide: cur, html });
+      }, 250);
+    });
+    renderNoteStatus();
     box.querySelector('.dk-bar').addEventListener('click', (e) => {
       const a = e.target.closest('button') && e.target.closest('button').dataset.a;
       if (a === 'prev') step(-1);
@@ -945,7 +976,7 @@
     if (!pv || cur < 0) return;
     const s = slides[cur];
     pv.title.textContent = `${cur + 1}. ${titleOf(s, cur)}`;
-    pv.notes.innerHTML = notesHtml(cur);
+    pv.notes.innerHTML = editing ? (slides[cur] ? notesOf(slides[cur], cur) : '') : notesHtml(cur);
     pv.meta.textContent = metaText(cur) ? '· ' + metaText(cur) : '';
     pv.pos.textContent = `${cur + 1} / ${slides.length}`;
     send(pv.fc.contentWindow, { dk: 'go', index: cur });
@@ -970,6 +1001,8 @@
       if (m.dk === 'key') handleKey(m.key, m.shift);
       if (m.dk === 'control') applyControl(m);
       if (m.dk === 'reveal') applyReveal(m);
+      if (m.dk === 'notes') { editNotes(m.slide, m.html); if (m.slide === cur) renderNotes(); }
+      if (m.dk === 'notes-saved') { notesEdits.clear(); clearDraft(); }
     } else if (ROLE === 'presenter') {
       const fromPreview = pv && (e.source === pv.fc.contentWindow || e.source === pv.fn.contentWindow);
       if (fromPreview) {
@@ -998,6 +1031,184 @@
       if (m.dk === 'control') applyControl(m);
       if (m.dk === 'reveal') applyReveal(m);
     }
+  }
+
+  // ── Editing speaker notes (presenter view) ───────────────────────────────
+  // Edits apply to the live deck at once and are kept as a draft in
+  // localStorage. "Save" writes them into the deck's own HTML file through
+  // the File System Access API (Chrome/Edge): the original source is read and
+  // only the edited <aside class="notes"> are replaced, so nothing from the
+  // running presentation leaks into the file. Elsewhere it downloads
+  // notes.json for scripts/apply-notes.mjs.
+  const notesEdits = new Map();      // slide index → notes HTML ('' = remove)
+  const DRAFT = 'deck-kit-notes:' + location.pathname;
+  let editing = false;
+  let fileHandle = null;
+
+  function setNotesDom(root, list, i, html) {
+    const s = list[i];
+    if (!s) return;
+    let a = s.querySelector('aside.notes');
+    if (!html) { if (a) a.remove(); return; }
+    if (!a) {
+      a = root.createElement('aside');
+      a.className = 'notes';
+      s.append(root.createTextNode('\n  '), a, root.createTextNode('\n'));
+    }
+    a.innerHTML = html;
+  }
+  function editNotes(i, html) {
+    notesEdits.set(i, html);
+    setNotesDom(document, slides, i, html);
+    try { localStorage.setItem(DRAFT, JSON.stringify(Object.fromEntries(notesEdits))); } catch (e) {}
+    renderNoteStatus();
+  }
+  function clearDraft() { try { localStorage.removeItem(DRAFT); } catch (e) {} renderNoteStatus(); }
+  function loadDraft() {
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(DRAFT) || 'null'); } catch (e) {}
+    if (!d) return 0;
+    Object.entries(d).forEach(([i, html]) => { notesEdits.set(+i, html); setNotesDom(document, slides, +i, html); });
+    return notesEdits.size;
+  }
+  function renderNoteStatus(msg) {
+    if (!pv) return;
+    pv.nstat.textContent = msg || (notesEdits.size ? fmt(L.unsaved, { n: notesEdits.size }) : '');
+  }
+  function setEditing(on) {
+    editing = on;
+    pv.notes.contentEditable = on ? 'true' : 'false';
+    pv.notesBox.classList.toggle('dk-editing', on);
+    pv.editBtn.textContent = on ? L.done : L.edit;
+    renderPresenter();
+    if (on) pv.notes.focus();
+  }
+
+  /** Find each slide's [start, end) in the HTML source text: the offset of
+   *  its opening tag and of its closing tag. Mirrors findAdapter(): children
+   *  of <deck-stage>, else top-level `.slide` elements. Comments and the raw
+   *  text of script/style/textarea are skipped; unclosed tags are tolerated. */
+  function slideRanges(src) {
+    const VOID = /^(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/i;
+    const tagRe = /<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<![^>]*>|<(\/?)([A-Za-z][\w:.-]*)((?:\s+[^\s"'>\/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*)\s*(\/?)>/g;
+    const hasDeckStage = /<deck-stage[\s>]/i.test(src.replace(/<!--[\s\S]*?-->/g, ''));
+    const stack = [], ranges = [];
+    let m;
+    while ((m = tagRe.exec(src))) {
+      if (!m[2]) continue;
+      const name = m[2].toLowerCase();
+      if (m[1]) { // closing tag: pop to the matching opener
+        for (let k = stack.length - 1; k >= 0; k--) {
+          if (stack[k].name !== name) continue;
+          const [open] = stack.splice(k);
+          if (open.slide) ranges.push([open.start, m.index]);
+          break;
+        }
+        continue;
+      }
+      const cls = (m[3].match(/\sclass\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'>]+))/i) || [])[1] || '';
+      const parent = stack[stack.length - 1];
+      const slide = hasDeckStage
+        ? !!parent && parent.name === 'deck-stage' && !/^(script|style|template)$/.test(name)
+        : /(^|\s|["'])slide(\s|["']|$)/.test(cls) && !stack.some((x) => x.slide);
+      if (VOID.test(name) || m[4]) { if (slide) ranges.push([m.index, m.index + m[0].length, true]); continue; }
+      stack.push({ name, start: m.index, slide });
+      if (/^(script|style|textarea|title)$/.test(name)) {
+        const close = src.toLowerCase().indexOf('</' + name, tagRe.lastIndex);
+        tagRe.lastIndex = close < 0 ? src.length : close;
+      }
+    }
+    return ranges.sort((x, y) => x[0] - y[0]);
+  }
+
+  /** Replace only the edited <aside class="notes"> in the source text; every
+   *  other byte stays as it was. Returns null if the slides can't be matched. */
+  function patchNotesText(src, edits, count) {
+    const ranges = slideRanges(src);
+    if (ranges.length !== count || ranges.some((r) => r[2])) return null;
+    const asideRe = /<aside\b[^>]*\sclass\s*=\s*(?:"[^"]*\bnotes\b[^"]*"|'[^']*\bnotes\b[^']*'|notes\b)[^>]*>/i;
+    let out = src;
+    // Work from the last slide back so earlier offsets stay valid.
+    [...edits.entries()].sort((x, y) => y[0] - x[0]).forEach(([i, html]) => {
+      const [start, end] = ranges[i];
+      const body = out.slice(start, end);
+      const am = body.match(asideRe);
+      if (am) {
+        const open = start + am.index;
+        const close = out.indexOf('</aside>', open);
+        if (close < 0 || close > end) return;
+        if (html) out = out.slice(0, open + am[0].length) + html + out.slice(close);
+        else {
+          // Drop the aside together with the whitespace line it sat on.
+          const lineStart = out.lastIndexOf('\n', open - 1);
+          const from = /^\s*$/.test(out.slice(lineStart + 1, open)) ? lineStart : open;
+          out = out.slice(0, from) + out.slice(close + '</aside>'.length);
+        }
+      } else if (html) {
+        const lineStart = out.lastIndexOf('\n', end - 1);
+        const indent = (out.slice(lineStart + 1, end).match(/^[ \t]*$/) || [''])[0];
+        const inner = indent + (indent.includes('\t') ? '\t' : '  ');
+        const atLineStart = /^[ \t]*$/.test(out.slice(lineStart + 1, end));
+        out = atLineStart
+          ? out.slice(0, lineStart + 1) + `${inner}<aside class="notes">${html}</aside>\n` + out.slice(lineStart + 1)
+          : out.slice(0, end) + `<aside class="notes">${html}</aside>` + out.slice(end);
+      }
+    });
+    return out;
+  }
+
+  /** Put the edited notes into an HTML source string: a minimal text edit when
+   *  the slides can be located in the source, otherwise a parse-and-serialise
+   *  (which doesn't run scripts, but normalises formatting). */
+  function patchNotes(src, edits, count) {
+    const exact = patchNotesText(src, edits, count);
+    if (exact != null) return exact;
+    const doc = new DOMParser().parseFromString(src, 'text/html');
+    const ds = doc.querySelector('deck-stage');
+    const list = ds
+      ? Array.from(ds.children).filter((e) => !/^(SCRIPT|STYLE|TEMPLATE)$/.test(e.tagName))
+      : Array.from(doc.querySelectorAll('.slide')).filter((s) => !s.parentElement.closest('.slide'));
+    if (list.length !== count) throw new Error(`the file has ${list.length} slides, the deck shows ${count}`);
+    edits.forEach((html, i) => setNotesDom(doc, list, i, html));
+    const dt = doc.doctype ? `<!DOCTYPE ${doc.doctype.name}>` : '<!doctype html>';
+    return dt + '\n' + doc.documentElement.outerHTML + '\n';
+  }
+
+  async function saveNotesToFile() {
+    if (!notesEdits.size) { renderNoteStatus(L.nothing); return; }
+    const deckName = decodeURIComponent(location.pathname.split('/').pop() || 'index.html');
+    if (window.showOpenFilePicker) {
+      try {
+        if (!fileHandle) {
+          renderNoteStatus(L.pickDeck);
+          [fileHandle] = await window.showOpenFilePicker({ types: [{ description: 'HTML', accept: { 'text/html': ['.html', '.htm'] } }] });
+          if (fileHandle.name !== deckName && !confirm(fmt(L.otherFile, { a: fileHandle.name, b: deckName }))) { fileHandle = null; renderNoteStatus(); return; }
+        }
+        let perm = await fileHandle.queryPermission({ mode: 'readwrite' });
+        if (perm !== 'granted') perm = await fileHandle.requestPermission({ mode: 'readwrite' });
+        if (perm !== 'granted') throw new Error('permission denied');
+        const out = patchNotes(await (await fileHandle.getFile()).text(), notesEdits, slides.length);
+        const w = await fileHandle.createWritable();
+        await w.write(out);
+        await w.close();
+        notesEdits.clear();
+        clearDraft();
+        send(window.opener, { dk: 'notes-saved' });
+        renderNoteStatus(fmt(L.saved, { f: fileHandle.name }));
+        return;
+      } catch (e) {
+        if (e.name === 'AbortError') { renderNoteStatus(); return; }
+        renderNoteStatus(fmt(L.saveFailed, { e: e.message }));
+        if (!/slides/.test(e.message)) return;
+      }
+    }
+    // No File System Access (Firefox, Safari): hand over a notes.json to merge.
+    const blob = new Blob([JSON.stringify({ deck: deckName, slides: slides.length, notes: Object.fromEntries(notesEdits) }, null, 2)], { type: 'application/json' });
+    const a = el('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'notes.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    renderNoteStatus(L.downloaded);
   }
 
   // ── Navigation hook ──────────────────────────────────────────────────────
@@ -1081,7 +1292,9 @@
 
   function onKey(e) {
     if (synthetic) return;
-    const t = e.target;
+    // Events from our shadow UI are retargeted to the host; look at the real target.
+    const t = (e.composedPath && e.composedPath()[0]) || e.target;
+    if (editing && e.key === 'Escape') { setEditing(false); e.preventDefault(); return; }
     const typing = t && (t.isContentEditable || /^(TEXTAREA|SELECT)$/.test(t.tagName) ||
       (t.tagName === 'INPUT' && !/^(range|checkbox|radio|button|submit|reset|color)$/.test(t.type)));
     const onControl = t && t.tagName === 'INPUT' && /^(range|checkbox|radio)$/.test(t.type);
@@ -1200,16 +1413,24 @@
 
   /** Resolve once slide i stops changing: its text and inline styles are the
    *  same on two checks in a row (count-up numbers, growing bars done).
-   *  Canvas pixels and CSS keyframe loops are ignored, so live widgets and
-   *  ambient animation don't hold it up. */
+   *  Finite CSS animations must finish; canvas pixels and infinite keyframe
+   *  loops are ignored, so live widgets and ambient motion don't hold it up. */
   async function settleSlide(i, { min = 150, max = 3000 } = {}) {
     const s = slides[i];
     if (!s) return;
-    const sig = () => s.textContent + '|' + Array.from(s.querySelectorAll('[style]'), (e) => e.getAttribute('style')).join(';');
+    // Position too, so scroll-snap decks count as settled only once scrolling stops.
+    const sig = () => Math.round(s.getBoundingClientRect().top) + '|' + s.textContent + '|' + Array.from(s.querySelectorAll('[style]'), (e) => e.getAttribute('style')).join(';');
     const t0 = performance.now();
     await sleep(min);
     let prev = sig(), same = 0;
-    while (same < 2 && performance.now() - t0 < max) {
+    // Finite CSS animations / transitions on the slide (entrances) must end too;
+    // infinite loops (ambient motion) are ignored.
+    const running = () => (document.getAnimations ? document.getAnimations() : []).some((an) => {
+      const target = an.effect && an.effect.target;
+      if (!target || !(s === target || s.contains(target)) || an.playState !== 'running') return false;
+      return isFinite(an.effect.getComputedTiming().endTime);
+    });
+    while ((same < 2 || running()) && performance.now() - t0 < max) {
       await sleep(150);
       const now = sig();
       same = now === prev ? same + 1 : 0;
@@ -1343,6 +1564,7 @@
     settle: settleSlide,
     preparePrint,
     cleanupPrint,
+    patchNotes,
     /** Visit every slide (so on-entry content renders), then open the print dialog. */
     async print() {
       if (document.body.getAttribute('data-print-visit') !== 'off') {
@@ -1368,6 +1590,7 @@
     if (ROLE === 'presenter') {
       const m = (location.hash || '').match(/^#(\d+)$/);
       cur = m ? Math.max(0, Math.min(slides.length - 1, +m[1] - 1)) : 0;
+      loadDraft();
       buildPresenter();
       window.addEventListener('keydown', onKey, true);
       requestAnimationFrame(loop);
@@ -1414,6 +1637,8 @@
 
     try {
       if (!localStorage.getItem('deck-kit-hint')) { flash(L.helpHint, 3500); localStorage.setItem('deck-kit-hint', '1'); }
+      const restored = loadDraft();
+      if (restored) { renderNotes(); flash(fmt(L.restored, { n: restored }), 5000); }
     } catch (e) {}
 
     requestAnimationFrame(loop);

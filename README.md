@@ -16,7 +16,7 @@ Clone https://github.com/zarazhangrui/beautiful-html-templates and follow the in
 
 Every template ships with [`deck-kit.js`](./runtime/deck-kit.js), a presenter layer that sits on top of the template's design:
 
-- **Presenter view** (`P`): a second window with the current and next slide, speaker notes and a timer against your plan; the projector shows only the slide. Sliders and answers sync both ways, so you can run demos from the laptop.
+- **Presenter view** (`P`): a second window with the current and next slide, speaker notes and a timer against your plan; the projector shows only the slide. Sliders and answers sync both ways, so you can run demos from the laptop, and speaker notes can be edited there and saved back into the HTML.
 - **Speaker notes** (`N`), **slide menu** (`M`) with planned minutes, **talk timer** (`T`).
 - **In the room**: black/white screen (`B`/`W`), laser pointer (`L`), draw on slides (`D`), fullscreen (`F`), `#N` deep links, swipe.
 - **Interactive slides**: `DeckKit.widget()` with `DeckKit.plot()` / `DeckKit.bind()` for live charts and sliders in the template's colours; `data-reveal` answers, `data-countdown` timers.
@@ -33,6 +33,7 @@ node scripts/md-to-deck.mjs talk.md --theme=vellum      # or write it in Markdow
 node scripts/check-deck.mjs my-talk/index.html          # lint before presenting
 node scripts/export.mjs my-talk/index.html              # PDF + PNGs + handout with notes
 node scripts/export.mjs my-talk/index.html --compact --pptx   # small PDF, PowerPoint with notes
+node scripts/export.mjs my-talk/index.html --pptx-editable    # PowerPoint with editable text (+ fonts/ to install)
 node scripts/bundle.mjs my-talk/index.html              # one offline .html file
 ```
 

@@ -11,7 +11,7 @@
  * Exit code 1 when anything fails.
  */
 
-import { readdirSync, mkdirSync, writeFileSync, mkdtempSync } from 'node:fs';
+import { readdirSync, mkdirSync, writeFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -162,7 +162,54 @@ if (!only || only === "demo") {
     if (f) await f.evaluate(() => document.querySelector('[data-reveal]').click());
     await sleep(600);
     ok('answer revealed in the preview shows on the audience screen', await page.evaluate(() => !document.getElementById(document.querySelector('[data-reveal]').getAttribute('data-reveal')).hidden));
+
+    // Speaker notes: edit in the presenter, mirrored to the audience, saved into the file.
+    await page.evaluate(() => DeckKit.goTo(1));
+    await sleep(800);
+    await pv.evaluate(() => {
+      const k = document.querySelector('#deck-kit').shadowRoot;
+      k.querySelector('[data-n="edit"]').click();
+      const box = k.querySelector('.dk-pnotes .dk-tx');
+      box.innerHTML = 'Edited note: ask the room first.';
+      box.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await sleep(800);
+    ok('edited note reaches the audience deck', /Edited note/.test(await page.evaluate(() => DeckKit.notesOf(1))));
+    ok('edit kept as a draft', await page.evaluate(() => /Edited note/.test(localStorage.getItem('deck-kit-notes:' + location.pathname) || '')));
+    const source = readFileSync(demo, 'utf8');
+    const saved = await pv.evaluate(async (src) => {
+      let written = null;
+      window.showOpenFilePicker = async () => [{
+        name: 'index.html',
+        queryPermission: async () => 'granted',
+        getFile: async () => ({ text: async () => src }),
+        createWritable: async () => ({ write: async (t) => { written = t; }, close: async () => {} }),
+      }];
+      document.querySelector('#deck-kit').shadowRoot.querySelector('[data-n="save"]').click();
+      for (let k = 0; k < 40 && written === null; k++) await new Promise((r) => setTimeout(r, 50));
+      return written;
+    }, source);
+    ok('Save writes the notes into the HTML source', saved && /Edited note: ask the room first\./.test(saved) && (saved.match(/<section/g) || []).length === (source.match(/<section/g) || []).length);
+    ok('saved file has no runtime state', saved && !/deck-kit-style|dk-print|data-deck-active|data-screen-label|id="deck-kit"/.test(saved));
+    ok('draft cleared after save', await page.evaluate(() => !localStorage.getItem('deck-kit-notes:' + location.pathname)));
     await pv.close();
+  }
+
+  // apply-notes.mjs merges a notes.json into a copy of the deck.
+  {
+    const copy = join(dirname(demo), '.notes-test.html');
+    const json = join(out, 'notes.json');
+    writeFileSync(copy, readFileSync(demo, 'utf8'));
+    writeFileSync(json, JSON.stringify({ deck: 'index.html', notes: { 0: 'Merged from <b>notes.json</b>', 6: 'Closing words.' } }));
+    let merged = '';
+    try {
+      execSync(`node "${resolve(root, 'scripts/apply-notes.mjs')}" "${copy}" "${json}"`, { stdio: 'pipe' });
+      const chk = await openDeck(browser, copy, { width: 1200, height: 700 });
+      merged = await chk.evaluate(() => DeckKit.notesOf(0) + ' | ' + DeckKit.notesOf(6) + ' | ' + DeckKit.length);
+      await chk.close();
+    } catch (e) { merged = 'error ' + e.message; }
+    rmSync(copy, { force: true });
+    ok('apply-notes.mjs merges notes.json', /Merged from <b>notes\.json<\/b> \| Closing words\. \| 7/.test(merged), merged);
   }
 
   // Print: canvases on never-visited slides are drawn and kept.
