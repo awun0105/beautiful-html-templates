@@ -9,7 +9,6 @@
 **34 designed HTML slide templates with built-in presenter tools, for building talks with a coding agent.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 [![Tests](https://github.com/awun0105/deck-kit/actions/workflows/test.yml/badge.svg)](https://github.com/awun0105/deck-kit/actions/workflows/test.yml)
 
 [Tiếng Việt: README.md](README.md)
@@ -23,31 +22,20 @@
 - [Overview](#overview)
 - [Screenshots](#screenshots)
 - [Key Features](#key-features)
-- [Software Components](#software-components)
-- [Architecture](#architecture)
 - [Repository Structure](#repository-structure)
-- [Target Audience / Use Case](#target-audience--use-case)
-- [Prerequisites & Requirements](#prerequisites--requirements)
 - [Getting Started](#getting-started)
-- [Customization & Advanced Usage](#customization--advanced-usage)
-- [Documentation](#documentation)
+- [Advanced Usage](#advanced-usage)
 - [Contributing](#contributing)
-- [Security Considerations](#security-considerations)
 - [Acknowledgement](#acknowledgement)
-- [Contact](#contact)
 - [License](#license)
 
 ---
 
 ## Overview
 
-deck-kit is a set of HTML slide decks and tools for making presentations with a coding agent such as Claude Code, Codex or Gemini CLI. The agent asks about the occasion and mood, picks one of 34 templates, writes the slides and speaker notes, and hands back a single HTML file. The deck opens in any browser and runs offline: no PowerPoint and no account needed.
-
-Every template carries the same presenter runtime, `deck-kit.js`. It adds a presenter view on a second screen, speaker notes, a talk timer, drawing and a laser pointer, in-browser editing that saves into the file, and interactive slides (step reveals, maths, quizzes, charts and more). Node.js scripts turn Markdown or an existing PowerPoint into a deck, check decks for mistakes, export PDF, PNG and PowerPoint, and publish a deck to a shareable link.
+deck-kit lets you build HTML presentations with a coding agent such as Claude Code, Codex or Gemini CLI. Describe the talk: the agent picks one of 34 templates, writes the slides and speaker notes, and hands back one HTML file. Open it in a browser to present — no PowerPoint, no internet needed.
 
 ## Screenshots
-
-Six of the 34 templates (cover slides):
 
 <p>
   <img src="./screenshots/soft-editorial-4.png" width="32.5%" alt="Soft Editorial" />
@@ -59,7 +47,7 @@ Six of the 34 templates (cover slides):
 </p>
 
 <details>
-<summary><b>All 34 templates</b> (three slides each)</summary>
+<summary><b>All 34 templates</b></summary>
 
 All 34 templates, three slides each (cover · mid-deck · later). Click a name to open its folder.
 
@@ -407,234 +395,96 @@ All 34 templates, three slides each (cover · mid-deck · later). Click a name t
 
 ## Key Features
 
-- **34 templates:** distinct visual systems (editorial, minimal, poster, retro, pastel, pixel art and more), each a self-contained folder.
-- **Presenter view:** current and next slide, notes, timer and plan on the laptop while the projector shows the slide; controls stay in sync between the two windows.
-- **Classroom tools:** black or white screen, laser pointer, drawing on slides, zoom into a region, slide menu with planned minutes, countdowns.
-- **Interactive slides:** step-by-step reveals, KaTeX maths, highlighted code with line-by-line stepping, multiple-choice quizzes, bar / line / pie charts, play / pause simulations, before / after sliders, image hotspots, QR codes, live canvas widgets.
-- **Video and audio:** players with controls; nothing autoplays; leaving a slide stops and rewinds its media.
-- **Editing in the browser:** move, resize and retype elements, then save straight into the HTML file; or copy an element's exact location to give the agent precise instructions.
-- **Import and export:** Markdown or PowerPoint to deck; deck to PDF, PNG, handout, PowerPoint (images or editable text) or one offline HTML file.
-- **Publishing:** one command to Vercel, Cloudflare Pages or GitHub Pages, with speaker notes left out by default.
-- **Agent instructions:** `AGENTS.md` / `SKILL.md` tell the agent how to choose a template, keep its design and use every feature.
-
-## Software Components
-
-- **Slides:** plain HTML and CSS per template; the `<deck-stage>` web component (`deck-stage.js`) for slide layout and navigation.
-- **Presenter runtime:** `deck-kit.js`, dependency-free JavaScript shared by all templates.
-- **Libraries loaded on demand:** KaTeX (maths) and qrcode-generator (QR codes) from the jsDelivr CDN; `bundle.mjs` embeds them for offline files.
-- **Tools:** Node.js scripts using `puppeteer-core` (headless Chrome), `pptxgenjs` (PowerPoint) and `jszip` (PowerPoint import).
-- **Publishing:** the Vercel CLI, Wrangler (Cloudflare) or the GitHub CLI, run through `npx` / `gh`.
-
-## Architecture
-
-A deck is one HTML file that loads two scripts:
-
-1. **The template's own HTML and CSS** define the slides and their look.
-2. **`deck-stage.js`** (or the template's inline navigation) lays out and switches slides.
-3. **`deck-kit.js`** finds the slides, adds the presenter tools and interactive features, and talks to the presenter window through `postMessage`.
-4. **The scripts in `scripts/`** open the same file in headless Chrome to check it, capture each slide for export, or bundle and publish it.
+- **Presenting:** presenter view on the laptop (next slide, notes, timer), laser pointer, drawing, zoom into a region.
+- **Interactive slides:** step reveals, maths, highlighted code, quizzes, charts, video — each is one HTML attribute.
+- **Editing in the browser:** move, resize and retype, then save straight into the file.
+- **Import and export:** Markdown or PowerPoint to deck; deck to PDF, PowerPoint or a shareable link.
 
 ## Repository Structure
 
 | Path | Description |
 |---|---|
-| `templates/` | The 34 templates, one self-contained folder each (`template.html`, assets, runtime copies) |
-| `runtime/` | `deck-kit.js` and `deck-stage.js`; the only place to edit them (`npm run sync` copies them into every template) |
-| `scripts/` | Command-line tools: new deck, Markdown and PowerPoint import, check, export, bundle, deploy, tests |
-| `examples/deck-kit-demo/` | One deck that shows every feature |
-| `examples/md-deck/` | A sample talk written in Markdown |
-| `screenshots/` | Template screenshots used in this README |
-| `assets/` | The README banner and its HTML source |
-| `tests/fixtures/` | Sample PowerPoint, video and audio files used by the tests |
-| `AGENTS.md`, `SKILL.md` | Instructions for coding agents (same content; `SKILL.md` is the skill format) |
-| `widgets-reference.md` | Every attribute and interactive feature, with examples |
-| `animation-patterns.md` | How to add motion when asked |
-| `index.json` | Each template's style, palette, fonts and best uses, for choosing one |
-
-## Target Audience / Use Case
-
-- **Teachers and lecturers:** lessons with step reveals, quizzes, maths, code walkthroughs and live demos.
-- **Speakers and presenters:** conference talks, pitches and reports with a presenter view on the laptop.
-- **Developers using coding agents:** describe the talk, review three template previews, and get a finished deck with notes.
-
-## Prerequisites & Requirements
-
-### System / Software Requirements
-
-- OS: Linux, macOS or Windows.
-- Node.js 18 or newer.
-- Google Chrome or Chromium, used to check and export decks. Presenting works in any modern browser.
-- Git, to clone the repository.
-
-### API Keys & Credentials
-
-Needed only for publishing, with a one-time login:
-
-- Vercel: `npx vercel login`
-- Cloudflare Pages: `npx wrangler login`
-- GitHub Pages: the GitHub CLI (`gh auth login`)
-
----
+| `templates/` | The 34 templates, one self-contained folder each |
+| `runtime/` | The presenter toolkit `deck-kit.js`, shared by every template |
+| `scripts/` | Commands to create, import, check, export and publish decks |
+| `examples/deck-kit-demo/` | A deck showing every feature |
+| `AGENTS.md` | The full guide for agents (also `SKILL.md`) |
 
 ## Getting Started
 
+You need Node.js 18+ and Google Chrome (Chrome is used to check and export decks; any browser can present).
+
 ### 1. Install
 
-**Option A: Claude Code plugin**
+In Claude Code, install the plugin:
 
 ```text
 /plugin marketplace add awun0105/deck-kit
 /plugin install deck-kit@deck-kit
 ```
 
-The first time Claude exports a file, it runs `npm install` in the plugin's folder.
-
-**Option B: clone the repository** (other agents, or working by hand)
+With other agents, clone the repository and start the agent inside the `deck-kit` folder (it reads `AGENTS.md`):
 
 ```bash
 git clone https://github.com/awun0105/deck-kit.git
-cd deck-kit
-npm install
+cd deck-kit && npm install
 ```
 
-If Chrome is installed in an unusual place, set `CHROME_PATH=/path/to/chrome`.
+Open `examples/deck-kit-demo/index.html` to see what deck-kit can do.
 
-### 2. Connect your agent
+### 2. Make a deck
 
-- Agents with skills: link the folder into the agent's skills directory, for example `~/.claude/skills/deck-kit` or `~/.codex/skills/deck-kit`.
-- Other agents: start the agent inside the `deck-kit` folder (it reads `AGENTS.md`), or point it there: "Read ~/deck-kit/AGENTS.md, then make me a deck about …".
+Ask your agent, for example:
 
-### 3. Check the installation
+> Use deck-kit to make me a 20-minute deck about Kalman filters for my class.
 
-Open `examples/deck-kit-demo/index.html` in a browser and press `→` to step through it. Then check that the tools run:
+The agent asks a few questions, shows three template previews, then builds the deck. To work by hand (template names are the folders in `templates/`):
 
 ```bash
-node scripts/check-deck.mjs examples/deck-kit-demo/index.html
+node scripts/new-deck.mjs vellum ~/slides/kalman       # from a template
+node scripts/md-to-deck.mjs outline.md --theme=vellum  # from Markdown
+node scripts/pptx-to-deck.mjs talk.pptx --theme=vellum # from PowerPoint
 ```
 
-The command prints the number of slides and planned minutes, followed by any warnings.
+### 3. Present
 
-### 4. Make a deck
-
-**With an agent:**
-
-> Use deck-kit to make me a 20-minute deck about [topic] for my class.
-
-The agent asks a few questions, shows three template previews, then builds the deck with speaker notes.
-
-**By hand, from a template:**
-
-```bash
-node scripts/new-deck.mjs vellum ~/slides/kalman --title="Kalman filters"
-node scripts/check-deck.mjs ~/slides/kalman/index.html
-```
-
-**From Markdown or PowerPoint:**
-
-```bash
-node scripts/md-to-deck.mjs talk.md --theme=vellum
-node scripts/pptx-to-deck.mjs talk.pptx --theme=vellum
-```
-
-Template names are the folder names in `templates/`.
-
-### 5. Present
-
-Open the deck's `index.html` in a browser. Press `?` for all shortcuts.
+Open the deck's `index.html` in a browser. The keys you'll use most:
 
 | Key | Action |
 |---|---|
-| `←` `→` `Space` `1`–`9` | Navigate; `→` also reveals a slide's steps |
-| `P` | Presenter view in a second window (keep it on the laptop, move the original to the projector in extended-display mode) |
-| `N` / `M` / `T` | Speaker notes / slide menu / talk timer |
-| `B` / `W` | Black / white screen |
-| `L` / `D` | Laser pointer / draw on the slide (`C` clears) |
-| `Z` | Zoom: drag a box or click; `Z` or `Esc` zooms out |
-| `E` | Edit in the browser; `E` again saves into the file |
-| `K` | Copy an element's location for the agent |
-| `X` | Export and share panel |
-| `F` | Fullscreen |
-| `Ctrl+P` | Print every slide to PDF |
+| `←` `→` | Navigate and reveal steps |
+| `P` | Presenter view (second window) |
+| `N` / `T` | Notes / timer |
+| `L` / `D` / `Z` | Laser / draw / zoom |
+| `E` | Edit in place; press again to save |
+| `?` | All shortcuts |
 
----
+## Advanced Usage
 
-## Customization & Advanced Usage
+- **Interactive slides:** every attribute, with examples, is in [widgets-reference.md](widgets-reference.md). Usually it's enough to ask the agent, e.g. "add a quiz at the end of part 2".
+- **Precise changes through the agent:** press `K`, click the element to copy its location, and paste it into the chat with what to change.
+- **Export and share:** press `X` in the deck to print a PDF or get ready-made commands, or run:
 
-### Interactive slides
+  ```bash
+  node scripts/export.mjs ~/slides/kalman/index.html --pdf --pptx
+  node scripts/deploy.mjs ~/slides/kalman/index.html --to=vercel   # or cloudflare, github
+  ```
 
-Each feature is one HTML attribute and uses the template's colours and fonts: `data-step` (reveal on click), `$…$` (maths), `<pre data-lines="1-2|4">` (code walkthrough), `data-quiz`, `data-chart`, `data-stepper`, `data-compare`, `data-hotspot` and `data-qr`. Live canvas demos use `DeckKit.widget`, `DeckKit.plot` and `DeckKit.bind`. The full list with examples is in [widgets-reference.md](widgets-reference.md). Printed and exported decks always show every step.
+  A published deck is public; speaker notes are left out of it.
 
-### Motion
-
-Templates keep their original design. When motion is wanted, the agent follows [animation-patterns.md](animation-patterns.md); printed PDFs still show the final state.
-
-### Editing
-
-- **`E`:** click an element to select it, drag to move, drag the handles to resize, double-click to retype, `Del` to hide, `Ctrl+Z` to undo. Pressing `E` again saves into the HTML file (Chrome and Edge; pick the deck file once). Only the edited tags change.
-- **`K`:** click an element to copy its file, line, slide and selector, then paste it to the agent with the change wanted.
-- **Speaker notes:** edit them in the presenter view (`P`, then Edit, then Save to file).
-- **Deck memory:** each deck's `CLAUDE.md` records its purpose, audience, tone and feedback, so the agent keeps to them in later sessions.
-
-### Export and publish
-
-```bash
-node scripts/export.mjs ~/slides/kalman/index.html                     # PDF, PNG and a handout with notes
-node scripts/export.mjs ~/slides/kalman/index.html --compact --pptx    # small PDF for e-mail, PowerPoint
-node scripts/export.mjs ~/slides/kalman/index.html --pptx-editable     # PowerPoint with editable text
-node scripts/bundle.mjs ~/slides/kalman/index.html                     # one offline HTML file
-node scripts/deploy.mjs ~/slides/kalman/index.html --to=vercel         # or cloudflare, github
-```
-
-Each deck gets its own link, named after its folder (`--name` changes it). Re-deploying updates the same link; a name already used by a different deck needs confirmation. `--preview` publishes a separate test link and `--dry-run` publishes nothing. The `X` panel in a deck builds these commands with the deck's real path.
-
-### All commands
-
-| Command | Purpose |
-|---|---|
-| `scripts/new-deck.mjs <template> <dir>` | Start a deck from a template |
-| `scripts/md-to-deck.mjs talk.md --theme=<template>` | Markdown to deck |
-| `scripts/pptx-to-deck.mjs talk.pptx --theme=<template>` | PowerPoint to deck: titles, bullets, tables, pictures, notes |
-| `scripts/check-deck.mjs <deck.html>` | Find leftover placeholder text, broken images, overflowing text and missing titles or notes |
-| `scripts/export.mjs <deck.html>` | Export PDF, PNG, handout and PowerPoint |
-| `scripts/bundle.mjs <deck.html>` | Bundle into one offline file |
-| `scripts/deploy.mjs <deck.html> --to=…` | Publish to Vercel, Cloudflare Pages or GitHub Pages |
-| `scripts/apply-changes.mjs <deck.html> <file.json>` | Merge notes or edits saved from Firefox or Safari |
-| `npm test` | Test every template and the demo in headless Chrome |
-
-## Documentation
-
-- [AGENTS.md](AGENTS.md): the full guide (workflow, template rules, presenter features in §8, tools in §9, working on a deck over time in §10).
-- [widgets-reference.md](widgets-reference.md): every attribute and interactive feature.
-- [animation-patterns.md](animation-patterns.md): motion patterns by mood.
-- [examples/deck-kit-demo/index.html](examples/deck-kit-demo/index.html): a working deck with every feature.
-- [examples/md-deck/talk.md](examples/md-deck/talk.md): the Markdown format.
+Every other command and option is described in [AGENTS.md](AGENTS.md), sections 8 and 9.
 
 ## Contributing
 
-1. Fork the repository and create a branch.
-2. Edit the runtime only in `runtime/`, then copy it into the templates with `npm run sync`.
-3. Run `npm test` (needs Chrome) and make sure every check passes.
-4. Open a pull request describing the change.
-
-## Security Considerations
-
-- Publishing makes a deck public. Speaker notes are removed from the published copy unless `--keep-notes` is given, and the published copy disables editing and the export panel.
-- In-browser editing writes only to a file the user picks in the browser's file dialog, and refuses to save when the file changed on disk after the page was opened.
-- Decks that use maths or QR codes load KaTeX and qrcode-generator from jsDelivr; bundled decks embed them and need no network.
+Report bugs and ideas in [GitHub Issues](https://github.com/awun0105/deck-kit/issues). For pull requests, edit the runtime only in `runtime/`, then run `npm run sync` and `npm test`.
 
 ## Acknowledgement
 
-- [beautiful-html-templates](https://github.com/zarazhangrui/beautiful-html-templates) by Zara Zhang (MIT): the original project and the 34 design systems.
-- [frontend-slides](https://github.com/zarazhangrui/frontend-slides) by Zara Zhang (MIT): content-density and anti-"AI slop" guidance, and the idea of PowerPoint import.
-- [ai-deck-builder](https://github.com/Faris-Alanazi/ai-deck-builder) (MIT): the idea of in-place editing saved into the deck file and `#id` slide links.
-
-## Contact
-
-- Bug reports and questions: [GitHub Issues](https://github.com/awun0105/deck-kit/issues)
+deck-kit grew out of Zara Zhang's [beautiful-html-templates](https://github.com/zarazhangrui/beautiful-html-templates) (MIT; the 34 designs come from the original project), with ideas from [frontend-slides](https://github.com/zarazhangrui/frontend-slides) (MIT) and [ai-deck-builder](https://github.com/Faris-Alanazi/ai-deck-builder) (MIT).
 
 ## License
 
-This project is licensed under the MIT License; see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).
 
 ---
 
