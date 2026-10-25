@@ -1,0 +1,14 @@
+{
+  "name": "beautiful-html-templates",
+  "version": "1.0.0",
+  "description": "A library of 34 reusable HTML slide templates designed so that any coding agent can pick the right one and produce a beautiful deck.",
+  "skills": "./",
+  "author": {
+    "name": "zarazhangrui",
+    "url": "https://github.com/zarazhangrui"
+  },
+  "homepage": "https://github.com/zarazhangrui/beautiful-html-templates",
+  "repository": "https://github.com/zarazhangrui/beautiful-html-templates",
+  "license": "MIT",
+  "keywords": ["presentations", "slides", "html", "design", "templates"]
+}

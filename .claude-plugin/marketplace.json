@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "beautiful-html-templates",
+  "description": "Library of 34 reusable HTML slide templates with curated visual design systems.",
+  "owner": {
+    "name": "zarazhangrui",
+    "url": "https://github.com/zarazhangrui"
+  },
+  "plugins": [
+    {
+      "name": "beautiful-html-templates",
+      "description": "Library of 34 reusable HTML slide templates with curated visual design systems.",
+      "source": "./",
+      "category": "productivity",
+      "tags": ["presentations", "slides", "html", "design", "templates"]
+    }
+  ]
+}
