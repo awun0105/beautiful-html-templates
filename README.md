@@ -23,6 +23,7 @@ Every template ships with [`deck-kit.js`](./runtime/deck-kit.js), a presenter la
 - **Print** (`Ctrl+P`): every slide visited first so charts fill in, then one slide per page, canvases included.
 - **Edit mode** (`E`): move, resize, retype or hide elements right on the slide; `E` again saves into the HTML file, touching only what you changed.
 - **Point at things for your agent** (`K`): click an element to copy its file, line, slide and selector.
+- **Export & share** (`X`): print to PDF, or copy the exact command for PPTX / PNG / handout exports and for deploying to Vercel, Cloudflare Pages or GitHub Pages.
 - **Links between slides**: `<a href="#slide-id">` jumps there, also in the PDF.
 
 See [`examples/deck-kit-demo`](./examples/deck-kit-demo/index.html) and [`AGENTS.md` § 8](./AGENTS.md#8-presenter-features-deck-kitjs).

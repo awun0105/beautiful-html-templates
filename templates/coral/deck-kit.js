@@ -69,9 +69,14 @@
       editRestored: 'Restored {n} unsaved edit(s) — press E, then E again to save',
       editDownloaded: 'Saved edits.json — merge it with: node scripts/apply-changes.mjs <deck.html> edits.json',
       pick: 'Click an element to copy its location for your agent (Esc cancels)', copied: 'Copied: {t}',
+      share: 'Export & share', printNow: 'Print PDF now', print: 'Print', exportFiles: 'Export files', deploy: 'Deploy',
+      fPdf: 'PDF', fCompact: 'Small PDF', fPng: 'PNG', fHandout: 'Handout', fPptx: 'PPTX (images)', fPptxEd: 'PPTX (editable)',
+      previewOpt: 'Preview link', nameLbl: 'Name', copyCmd: 'Copy command', pickFormat: 'Tick at least one format',
+      cmdCopied: 'Command copied — paste it in a terminal or send it to your agent',
+      shareNote: 'Exports and deploys run with Node on your computer; deploying makes the deck public.',
       keys: [['← → 1–9', 'Navigate'], ['P', 'Presenter view (2nd window)'], ['N', 'Speaker notes'], ['M', 'Slide menu'],
         ['T', 'Talk timer (Shift+T reset)'], ['B / W', 'Black / white screen'], ['L', 'Laser pointer'],
-        ['D', 'Draw (C clear, Backspace undo)'], ['E', 'Edit mode (E again saves)'], ['K', 'Copy an element\'s location for your agent'], ['F', 'Fullscreen'], ['Ctrl+P', 'Print every slide'], ['Esc', 'Close panels'], ['?', 'This help']],
+        ['D', 'Draw (C clear, Backspace undo)'], ['E', 'Edit mode (E again saves)'], ['K', 'Copy an element\'s location for your agent'], ['X', 'Export & share (PDF, PPTX, deploy)'], ['F', 'Fullscreen'], ['Ctrl+P', 'Print every slide'], ['Esc', 'Close panels'], ['?', 'This help']],
     },
     vi: {
       notes: 'Ghi chú người nói', noNotes: 'Slide này không có ghi chú.', next: 'Tiếp theo', end: 'Hết bài',
@@ -93,9 +98,14 @@
       editRestored: 'Đã khôi phục {n} chỉnh sửa chưa lưu — bấm E rồi E lần nữa để lưu',
       editDownloaded: 'Đã tải edits.json — ghép vào deck bằng: node scripts/apply-changes.mjs <deck.html> edits.json',
       pick: 'Click vào phần tử để chép vị trí cho agent (Esc huỷ)', copied: 'Đã chép: {t}',
+      share: 'Xuất & chia sẻ', printNow: 'In PDF ngay', print: 'In', exportFiles: 'Xuất file', deploy: 'Deploy',
+      fPdf: 'PDF', fCompact: 'PDF nén', fPng: 'PNG', fHandout: 'Handout', fPptx: 'PPTX ảnh', fPptxEd: 'PPTX sửa được',
+      previewOpt: 'Bản xem thử', nameLbl: 'Tên', copyCmd: 'Chép lệnh', pickFormat: 'Hãy tick ít nhất một định dạng',
+      cmdCopied: 'Đã chép lệnh — dán vào terminal hoặc gửi cho agent chạy',
+      shareNote: 'Xuất file và deploy chạy bằng Node trên máy bạn; deploy sẽ công khai deck.',
       keys: [['← → 1–9', 'Chuyển slide'], ['P', 'Màn hình người trình bày (cửa sổ 2)'], ['N', 'Ghi chú người nói'], ['M', 'Menu các slide'],
         ['T', 'Đồng hồ (Shift+T đặt lại)'], ['B / W', 'Màn hình đen / trắng'], ['L', 'Con trỏ laser'],
-        ['D', 'Vẽ lên slide (C xoá, Backspace hoàn tác)'], ['E', 'Chỉnh sửa (E lần nữa để lưu)'], ['K', 'Chép vị trí phần tử cho agent'], ['F', 'Toàn màn hình'], ['Ctrl+P', 'In mọi slide'], ['Esc', 'Đóng bảng'], ['?', 'Bảng này']],
+        ['D', 'Vẽ lên slide (C xoá, Backspace hoàn tác)'], ['E', 'Chỉnh sửa (E lần nữa để lưu)'], ['K', 'Chép vị trí phần tử cho agent'], ['X', 'Xuất & chia sẻ (PDF, PPTX, deploy)'], ['F', 'Toàn màn hình'], ['Ctrl+P', 'In mọi slide'], ['Esc', 'Đóng bảng'], ['?', 'Bảng này']],
     },
   };
   const L = STR[(document.documentElement.lang || '').slice(0, 2).toLowerCase()] || STR.en;
@@ -180,6 +190,19 @@
       background: radial-gradient(circle, #fff 0 18%, #ff2a2a 30% 55%, rgba(255,42,42,0) 72%); pointer-events: none; display: none;
       box-shadow: 0 0 14px 6px rgba(255,42,42,.45); }
     .dk-laser.dk-show { display: block; }
+    /* export & share */
+    .dk-share { left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 14px; padding: 20px 24px; width: min(640px, 92vw); }
+    .dk-share h3 { margin: 0 0 14px; font-size: 18px; }
+    .dk-share .dk-row { display: grid; grid-template-columns: 110px 1fr; gap: 10px 14px; align-items: start; padding: 12px 0; border-top: 1px solid rgba(148,163,184,.2); }
+    .dk-share .dk-row > b { color: #93C5FD; font-weight: 600; padding-top: 4px; }
+    .dk-share .dk-opts { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+    .dk-share label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+    .dk-share input[type=text] { font: inherit; color: #fff; background: rgba(148,163,184,.14); border: 1px solid rgba(148,163,184,.3); border-radius: 6px; padding: 3px 8px; width: 180px; }
+    .dk-share button { font: 600 14px system-ui, sans-serif; color: #fff; background: #2563EB; border: 0; border-radius: 8px; padding: 6px 14px; cursor: pointer; }
+    .dk-share button:hover { background: #1D4ED8; }
+    .dk-share code { display: block; margin-top: 8px; font: 12px/1.45 ui-monospace, Menlo, monospace; color: #CBD5E1; background: rgba(0,0,0,.25);
+      border-radius: 6px; padding: 6px 8px; white-space: pre-wrap; word-break: break-all; }
+    .dk-share .dk-note { color: #94A3B8; font-size: 12px; margin-top: 10px; }
     /* edit mode */
     .dk-edbar { top: 0; left: 50%; transform: translateX(-50%); border-radius: 0 0 12px 12px; padding: 8px 16px; font-size: 14px; white-space: nowrap; }
     .dk-edbar.dk-show { display: flex; gap: 14px; align-items: center; }
@@ -393,6 +416,19 @@
     const toast = el('div', 'dk-panel dk-toast');
     const blankEl = el('div', 'dk-blank');
     const edbar = el('div', 'dk-panel dk-edbar', `<span>${L.editBar}</span><span class="dk-edn"></span>`);
+    const chk = (k, label, on) => `<label><input type="checkbox" data-f="${k}"${on ? ' checked' : ''}>${esc(label)}</label>`;
+    const share = el('div', 'dk-panel dk-share', `
+      <h3>${esc(L.share)}</h3>
+      <div class="dk-row"><b>${esc(L.printNow)}</b><div class="dk-opts"><button type="button" data-a="print">${esc(L.print)}</button></div></div>
+      <div class="dk-row"><b>${esc(L.exportFiles)}</b><div>
+        <div class="dk-opts">${chk('pdf', L.fPdf)}${chk('compact', L.fCompact)}${chk('png', L.fPng)}${chk('handout', L.fHandout)}${chk('pptx', L.fPptx, true)}${chk('pptx-editable', L.fPptxEd)}</div>
+        <div class="dk-opts" style="margin-top:10px"><button type="button" data-a="export">${esc(L.copyCmd)}</button></div><code data-c="export"></code></div></div>
+      <div class="dk-row"><b>${esc(L.deploy)}</b><div>
+        <div class="dk-opts">${['vercel', 'cloudflare', 'github'].map((t, i) => `<label><input type="radio" name="dk-to" value="${t}"${i ? '' : ' checked'}>${t === 'vercel' ? 'Vercel' : t === 'cloudflare' ? 'Cloudflare' : 'GitHub'}</label>`).join('')}</div>
+        <div class="dk-opts" style="margin-top:8px"><label><input type="checkbox" data-o="preview">${esc(L.previewOpt)}</label>
+          <label>${esc(L.nameLbl)} <input type="text" data-o="name" spellcheck="false"></label></div>
+        <div class="dk-opts" style="margin-top:10px"><button type="button" data-a="deploy">${esc(L.copyCmd)}</button></div><code data-c="deploy"></code></div></div>
+      <div class="dk-note">${esc(L.shareNote)}</div>`);
     const hov = el('div', 'dk-hov');
     const selbox = el('div', 'dk-sel', '<span class="dk-tag"></span>' +
       ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].map((d) => `<i class="dk-h" data-dir="${d}"></i>`).join(''));
@@ -401,7 +437,7 @@
     const ink = el('canvas', 'dk-ink');
     const laser = el('div', 'dk-laser');
     if (plan.has && ROLE === 'main') root.appendChild(progress);
-    root.append(ink, hov, selbox, notes, menu, tmr, help, toast, blankEl, laser, edbar);
+    root.append(ink, hov, selbox, notes, menu, tmr, help, toast, blankEl, laser, edbar, share);
     document.body.appendChild(host);
 
     tmr.addEventListener('click', () => timerCmd('pause'));
@@ -409,7 +445,8 @@
     // own handlers (several decks navigate on any click or wheel).
     ['click', 'mousedown', 'pointerdown', 'touchstart', 'touchend', 'wheel'].forEach((t) =>
       host.addEventListener(t, (e) => e.stopPropagation(), { passive: true }));
-    ui = { host, root, progress, notes, menu, tmr, help, toast, blankEl, ink, laser, edbar, hov, selbox };
+    ui = { host, root, progress, notes, menu, tmr, help, toast, blankEl, ink, laser, edbar, hov, selbox, share };
+    setupShare();
     buildMenu();
   }
 
@@ -1722,6 +1759,59 @@
     if (path.includes(ui.host) || editable(path[0])) { ev.preventDefault(); ev.stopPropagation(); startTyping(ed.sel); }
   }
 
+  // ── Export & share (X) ───────────────────────────────────────────────────
+  // A page can't run programs, so this panel prints directly and builds the
+  // export / deploy commands (with this deck's real path) to paste into a
+  // terminal or hand to the agent.
+  function toolsDir() {
+    const meta = document.querySelector('meta[name="deck-kit-tools"]');
+    if (meta && meta.content) return meta.content.replace(/\/$/, '');
+    const path = decodeURIComponent(location.pathname);
+    const k = path.indexOf('/beautiful-html-templates/');
+    if (location.protocol === 'file:' && k >= 0) return path.slice(0, k) + '/beautiful-html-templates/scripts';
+    return '$HOME/.agents/skills/beautiful-html-templates/scripts';
+  }
+  const deckPath = () => (location.protocol === 'file:' ? decodeURIComponent(location.pathname) : location.href.replace(/[?#].*$/, ''));
+  /** Same link name rule as deploy.mjs: the folder for index.html/template.html, else the file name. */
+  function defaultName() {
+    const parts = decodeURIComponent(location.pathname).split('/').filter(Boolean);
+    const file = parts.pop() || 'deck';
+    const base = /^(index|template)\.html?$/i.test(file) ? (parts.pop() || 'deck') : file.replace(/\.html?$/i, '');
+    return base.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 52) || 'deck';
+  }
+  // Double quotes keep spaces together and still let the shell expand $HOME.
+  const q = (s) => '"' + String(s).replace(/(["\\`])/g, '\\$1') + '"';
+  function shareCommand(kind) {
+    const box = ui.share;
+    if (kind === 'export') {
+      const flags = Array.from(box.querySelectorAll('[data-f]:checked')).map((c) => '--' + c.dataset.f);
+      return flags.length ? `node ${q(toolsDir() + '/export.mjs')} ${q(deckPath())} ${flags.join(' ')}` : '';
+    }
+    const to = (box.querySelector('input[name="dk-to"]:checked') || {}).value || 'vercel';
+    const name = box.querySelector('[data-o="name"]').value.trim();
+    const preview = box.querySelector('[data-o="preview"]').checked;
+    return `node ${q(toolsDir() + '/deploy.mjs')} ${q(deckPath())} --to=${to}${name ? ` --name=${q(name)}` : ''}${preview ? ' --preview' : ''}`;
+  }
+  function renderShare() {
+    ['export', 'deploy'].forEach((k) => { ui.share.querySelector(`[data-c="${k}"]`).textContent = shareCommand(k) || L.pickFormat; });
+  }
+  function setupShare() {
+    const box = ui.share;
+    box.querySelector('[data-o="name"]').value = defaultName();
+    box.addEventListener('input', renderShare);
+    box.addEventListener('change', renderShare);
+    box.addEventListener('click', (e) => {
+      const a = e.target.closest('button') && e.target.closest('button').dataset.a;
+      if (a === 'print') { show('share', false); api.print(); }
+      if (a === 'export' || a === 'deploy') {
+        const cmd = shareCommand(a);
+        if (!cmd) { flash(L.pickFormat); return; }
+        copyText(cmd).then(() => flash(L.cmdCopied, 4000));
+      }
+    });
+    renderShare();
+  }
+
   // ── Links between slides ─────────────────────────────────────────────────
   // <a href="#some-id"> jumps to the slide holding that id (#7 = slide 7).
   // Chrome keeps such links clickable in a printed PDF.
@@ -1805,6 +1895,7 @@
       case 'p': case 'P': if (ROLE === 'main') openPresenter(); break;
       case 'e': case 'E': if (ROLE !== 'main') return false; enterEdit(); break;
       case 'k': case 'K': if (ROLE !== 'main') return false; startPick(); break;
+      case 'x': case 'X': if (ROLE !== 'main') return false; renderShare(); show('share'); break;
       case 't': if (ROLE === 'main') { show('tmr'); renderTimer(); } break;
       case 'T': timerCmd('reset'); flash(L.elapsed + ' 0:00'); break;
       case 'f': case 'F': toggleFullscreen(); break;
@@ -1817,7 +1908,7 @@
       case '?': show('help'); break;
       case 'Escape':
         if (picking) stopPick();
-        ['menu', 'help', 'notes'].forEach((p) => show(p, false));
+        ['menu', 'help', 'notes', 'share'].forEach((p) => show(p, false));
         if (ink.on) setDraw(false);
         if (laserOn) setLaser(false);
         if (blank) setBlank(blank);

@@ -300,6 +300,7 @@ const page = `<!doctype html>
 <title>${esc(deckTitle)}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="generator" content="beautiful-html-templates md-to-deck (theme: ${theme})" />
+<meta name="deck-kit-tools" content="${resolve(root, 'scripts')}" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 ${fontLink}

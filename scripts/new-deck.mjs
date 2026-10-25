@@ -56,6 +56,8 @@ if (opt.title) {
   const t = String(opt.title).replace(/[<&]/g, (c) => ({ '<': '&lt;', '&': '&amp;' }[c]));
   html = /<title>[\s\S]*?<\/title>/i.test(html) ? html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${t}</title>`) : html.replace(/<head>/i, `<head>\n<title>${t}</title>`);
 }
+// Where the tools live, for the deck's Export & share panel (X).
+if (!/name="deck-kit-tools"/.test(html)) html = html.replace(/<head>/i, `<head>\n<meta name="deck-kit-tools" content="${resolve(root, 'scripts')}">`);
 // Demo notes describe the template, not the user's talk.
 html = html.replace(/(<script[^>]*id=["']speaker-notes["'][^>]*>)[\s\S]*?(<\/script>)/i, '$1[]$2');
 writeFileSync(join(dest, 'index.html'), html);

@@ -179,6 +179,11 @@ if (!only || only === "demo") {
     await dp.keyboard.press('k'); await dp.mouse.click(h.x, h.y); await sleep(600);
     const toast = await dp.evaluate(() => document.querySelector('#deck-kit').shadowRoot.querySelector('.dk-toast').textContent);
     ok('K copies file, slide and element', /index\.html.*slide 2.*<h2>/.test(toast) && (await dp.evaluate(() => DeckKit.index)) === 1, toast.slice(0, 90));
+    // X: export / deploy commands carry the deck's path.
+    await dp.keyboard.press('x'); await sleep(200);
+    const cmds = await dp.evaluate(() => [...document.querySelector('#deck-kit').shadowRoot.querySelectorAll('.dk-share code')].map((c) => c.textContent));
+    ok('X builds export and deploy commands', /scripts\/export\.mjs" ".*deck-kit-demo\/index\.html" --pptx/.test(cmds[0]) && /deploy\.mjs" .* --to=vercel --name="deck-kit-demo"/.test(cmds[1]), cmds.join(' | ').slice(0, 120));
+    await dp.keyboard.press('Escape');
     // Edit mode on the demo: one line changes; undo works.
     const rt = await editRoundTrip(dp, demo, 1);
     ok('edit mode saves only the edited tag', rt.ok && rt.added <= 2, JSON.stringify(rt));

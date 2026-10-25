@@ -266,6 +266,7 @@ Every template loads `deck-kit.js` after its own navigation script. It finds the
 | `F` | Fullscreen |
 | `Ctrl/Cmd+P` | Visits every slide (so charts drawn on entry fill in), then prints one slide per page, canvases kept |
 | `E` | **Edit mode**: click to select, drag to move, drag the handles to resize (corners scale text), double-click to retype, `Del` hides, arrows nudge, `Ctrl+Z`/`Ctrl+Y`. `E` again **saves into the HTML file** — only the edited tags change (`style="translate: …; width: …"` and new text) |
+| `X` | **Export & share** panel: *Print PDF now*, and ready-made commands (with this deck's real path) for the other exports — PDF, small PDF, PNG, handout, PPTX, editable PPTX — and for deploying to Vercel / Cloudflare / GitHub (preview, link name). The user pastes the command in a terminal or sends it to you to run |
 | `K` | Click an element to **copy its location** (file, line when known, slide, tag, text, CSS selector) — paste it to the agent with what to change |
 | `?` / `Esc` | Shortcut help / close panels |
 | `#7` / `#some-id` in the URL | Opens slide 7 / the slide holding that id; the hash follows navigation |
