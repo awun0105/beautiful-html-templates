@@ -315,8 +315,8 @@ if (!only || only === 'tools') {
     if (file) {
       const pub = await openDeck(browser, file, { width: 1280, height: 720 });
       await pub.keyboard.press('x'); await pub.keyboard.press('e'); await sleep(200);
-      const st = await pub.evaluate(() => ({ share: document.querySelector('#deck-kit').shadowRoot.querySelector('.dk-share').classList.contains('dk-show'), edit: DeckKit.edit.on, notes: DeckKit.slides.some((s, i) => DeckKit.notesOf(i)) }));
-      ok('published copy: speaker notes left out, E and X disabled', !st.share && !st.edit && !st.notes, JSON.stringify(st));
+      const st = await pub.evaluate(() => { const k = document.querySelector('#deck-kit').shadowRoot; const help = k.querySelector('.dk-help').textContent; return { share: k.querySelector('.dk-share').classList.contains('dk-show'), edit: DeckKit.edit.on, notes: DeckKit.slides.some((s, i) => DeckKit.notesOf(i)), helpHasPrint: /Ctrl\+P/.test(help), helpHasEdit: /Edit mode/.test(help) }; });
+      ok('published copy: no notes; E, K, X off and out of the ? list; Ctrl+P listed', !st.share && !st.edit && !st.notes && st.helpHasPrint && !st.helpHasEdit, JSON.stringify(st));
       await pub.close();
     } else ok('published copy built', false, built.slice(0, 120));
   }

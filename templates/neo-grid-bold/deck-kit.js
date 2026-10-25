@@ -420,7 +420,7 @@
     const menu = el('div', 'dk-panel dk-menu', `<h2>${esc(L.menu)}</h2><div class="dk-items"></div>`);
     const tmr = el('div', 'dk-panel dk-timer');
     const help = el('div', 'dk-panel dk-help',
-      `<h3>${esc(L.help)}</h3><table>${L.keys.map(([k, d]) => `<tr><td><kbd>${esc(k)}</kbd></td><td>${esc(d)}</td></tr>`).join('')}</table>`);
+      `<h3>${esc(L.help)}</h3><table>${L.keys.filter(([k]) => !(PUBLISHED && /^[EKX]$/.test(k))).map(([k, d]) => `<tr><td><kbd>${esc(k)}</kbd></td><td>${esc(d)}</td></tr>`).join('')}</table>`);
     const toast = el('div', 'dk-panel dk-toast');
     const blankEl = el('div', 'dk-blank');
     const edbar = el('div', 'dk-panel dk-edbar', `<span>${L.editBar}</span><span class="dk-edn"></span>`);
