@@ -190,6 +190,32 @@ if (!only || only === "demo") {
     await dp.close();
   }
 
+  // Media: controls added, nothing autoplays, leaving the slide stops and rewinds.
+  {
+    const mp = await openDeck(browser, demo, { width: 1280, height: 720 });
+    const mi = await mp.evaluate(() => DeckKit.slides.findIndex((s) => s.id === 'media'));
+    await mp.evaluate((i) => DeckKit.goTo(i), mi); await sleep(500);
+    const before = await mp.evaluate((i) => { const s = DeckKit.slides[i]; const v = s.querySelector('video'), a = s.querySelector('audio'); return { controls: v.controls && a.controls, paused: v.paused && a.paused }; }, mi);
+    ok('video/audio get controls and do not autoplay', before.controls && before.paused, JSON.stringify(before));
+    await mp.evaluate((i) => DeckKit.slides[i].querySelector('video').play(), mi);
+    await sleep(700);
+    const playing = await mp.evaluate((i) => { const v = DeckKit.slides[i].querySelector('video'); return !v.paused && v.currentTime > 0; }, mi);
+    await mp.evaluate((i) => DeckKit.goTo(i + 1), mi); await sleep(400);
+    const after = await mp.evaluate((i) => { const v = DeckKit.slides[i].querySelector('video'); return { paused: v.paused, t: v.currentTime }; }, mi);
+    ok('leaving the slide stops and rewinds media', playing && after.paused && after.t === 0, JSON.stringify(after));
+    await mp.close();
+    // A YouTube iframe gets the player API (so it can be paused) and loses autoplay.
+    const ytDir = mkdtempSync(join(tmpdir(), 'yt-'));
+    const ytFile = join(ytDir, 'index.html');
+    writeFileSync(ytFile, `<!doctype html><html><body><div class="slide active"><h1>A</h1><iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1"></iframe></div><div class="slide"><h1>B</h1></div>
+<script>window.deckAdapter = { go() {}, index() { return 0; } };</script><script src="${resolve(root, 'runtime/deck-kit.js')}"></script></body></html>`);
+    const yp = await openDeck(browser, ytFile, { width: 1000, height: 600 });
+    const src = await yp.evaluate(() => document.querySelector('iframe').getAttribute('src'));
+    await yp.close();
+    rmSync(ytDir, { recursive: true, force: true });
+    ok('YouTube embeds get enablejsapi and lose autoplay', /\?enablejsapi=1&playsinline=1$/.test(src) && !/autoplay/.test(src), src);
+  }
+
   // Presenter view: popup with notes; navigation flows both ways.
   const popup = browser.waitForTarget((t) => t.url().includes('dk=presenter'), { timeout: 8000 }).catch(() => null);
   await page.keyboard.press('p');
@@ -280,7 +306,7 @@ if (!only || only === "demo") {
       await chk.close();
     } catch (e) { merged = 'error ' + e.message; }
     rmSync(copy, { force: true });
-    ok('apply-notes.mjs merges notes.json', /Merged from <b>notes\.json<\/b> \| Closing words\. \| 7/.test(merged), merged);
+    ok('apply-notes.mjs merges notes.json', /Merged from <b>notes\.json<\/b> \| Closing words\. \| \d+$/.test(merged), merged);
   }
 
   // Print: canvases on never-visited slides are drawn and kept.
@@ -306,6 +332,22 @@ if (!only || only === 'tools') {
     const pg = await openDeck(browser, join(imp, 'index.html'), { width: 1280, height: 720 });
     ok('imported deck boots with notes', (await pg.evaluate(() => DeckKit.length)) === 6 && /GPS story/.test(await pg.evaluate(() => DeckKit.notesOf(0))));
     await pg.close();
+  }
+  // Markdown media: video / audio players and YouTube embeds.
+  {
+    const dir = mkdtempSync(join(tmpdir(), 'md-media-'));
+    writeFileSync(join(dir, 'talk.md'), '---\ntitle: Media\n---\n# Media\n\n---\n## Clip\n![a clip](clip.mp4)\n\n---\n## Sound\n![a tone](tone.mp3)\n\n---\n## Talk\nhttps://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42\n');
+    ['clip.mp4', 'tone.mp3'].forEach((f) => writeFileSync(join(dir, f), readFileSync(resolve(root, 'tests/fixtures', f))));
+    let html = '';
+    try { execSync(`node "${resolve(root, 'scripts/md-to-deck.mjs')}" "${join(dir, 'talk.md')}" --theme=vellum --out="${join(dir, 'deck')}"`); html = readFileSync(join(dir, 'deck/index.html'), 'utf8'); } catch (e) { html = String(e.message); }
+    ok('md-to-deck: video, audio and YouTube embeds', /<video src="assets\/\d+-clip\.mp4" controls/.test(html) && /<audio src="assets\/\d+-tone\.mp3" controls/.test(html) && /youtube\.com\/embed\/dQw4w9WgXcQ\?rel=0&start=42/.test(html));
+    // Deploy keeps media as separate files and refuses files over a host's limit.
+    writeFileSync(join(dir, 'deck', 'big.mp4'), Buffer.alloc(26 * 1048576));
+    writeFileSync(join(dir, 'deck', 'index.html'), html.replace('</deck-stage>', '<section class="slide"><video src="big.mp4"></video></section></deck-stage>'));
+    let dep = '';
+    try { dep = execSync(`node "${resolve(root, 'scripts/deploy.mjs')}" "${join(dir, 'deck/index.html')}" --to=cloudflare --dry-run`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); } catch (e) { dep = String(e.stdout) + String(e.stderr); }
+    ok('deploy stops on files over the host limit (Cloudflare 25 MiB)', /Too big for cloudflare: media\/big\.mp4/.test(dep), dep.split('\n').find((l) => /Too big|Published|Dry run/.test(l)) || '');
+    rmSync(dir, { recursive: true, force: true });
   }
   // A deployed copy: no notes, no edit / export tools.
   {

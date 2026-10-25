@@ -31,7 +31,8 @@ export async function launch() {
   } catch {
     throw new Error('puppeteer-core is missing. Run `npm install` in the repo root first.');
   }
-  return puppeteer.launch({ executablePath: findChrome(), headless: true, args: ['--no-sandbox'] });
+  // Autoplay flag: tests start media with play() without a real user gesture.
+  return puppeteer.launch({ executablePath: findChrome(), headless: true, args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
 }
 
 export const fileUrl = (p) => pathToFileURL(resolve(p)).href;

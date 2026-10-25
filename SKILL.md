@@ -216,6 +216,10 @@ New slides you design tend to drift toward the statistically average slide. Insi
 
 (Design guidance adapted from [frontend-slides](https://github.com/zarazhangrui/frontend-slides), MIT.)
 
+### Motion — only when the user asks
+
+Don't add animation to a template by default. When the user asks for motion ("make it livelier", "animate the bullets"), read [`animation-patterns.md`](./animation-patterns.md): pick motion by feeling, trigger entrances with `DeckKit.widget` (`enter` / `leave` toggling `.is-in` on `[data-motion]` slides — works in every template and prints in the final state), and keep one orchestrated entrance per slide. If the template already animates, extend its own classes instead of stacking a second system.
+
 ---
 
 ## 6. Common pitfalls
@@ -325,6 +329,13 @@ No-code helpers:
 
 `DeckKit.goTo(i)`, `.next()`, `.prev()`, `.index`, `.length`, `.timer`, `.presenter()`, `.print()` and the `deckkit:ready` event are available for custom logic. A full working example is `examples/deck-kit-demo/index.html`.
 
+### Video, audio and embeds
+
+- `<video src="clip.mp4">`, `<audio src="song.mp3">`, YouTube / Vimeo `<iframe>`s all work. deck-kit **never autoplays** (it removes `autoplay`), gives every `<video>`/`<audio>` the browser controls (play, seek, volume, **mute**), and **stops and rewinds** a slide's media when you leave it — coming back shows it unplayed. YouTube iframes get `enablejsapi=1` automatically so they can be paused. Presenter previews stay muted.
+- In Markdown (`md-to-deck`): `![](clip.mp4)` / `![](song.mp3)` become players; a YouTube link on its own line becomes an embed (start time kept).
+- Exports show a still frame (PDF / PNG / PPTX can't play video). Online embeds need internet when presenting.
+- Size: `bundle.mjs` inlines media into the one file (warns past host limits); `deploy.mjs` ships video/audio as separate files and stops before uploading anything over the host's per-file limit (Cloudflare 25 MiB, GitHub 100 MB). Suggest YouTube for long videos.
+
 ### Decks written from scratch
 
 If a deck doesn't use `<deck-stage>`, expose its navigation so deck-kit can drive it — one line next to the slide-index variable:
@@ -350,7 +361,7 @@ Run `npm install` once in the repo root (installs `puppeteer-core`; it uses the 
 | `node scripts/apply-changes.mjs <deck.html> notes.json\|edits.json` | Merge notes (presenter view) or visual edits (`E`) saved in browsers without direct file access (Firefox, Safari); only the affected tags change. `apply-notes.mjs` is an alias |
 | `node scripts/pptx-to-deck.mjs talk.pptx --theme=<slug>` | Import a PowerPoint: titles, bullets (levels), tables, pictures and speaker notes → `source/talk.md` + a deck in md-to-deck layouts with the theme's look; hidden slides skipped unless `--include-hidden`; charts, SmartArt and video/audio are reported, not imported |
 | `node scripts/deploy.mjs <deck.html> --to=vercel\|cloudflare\|github` | Publish one self-contained file (never `CLAUDE.md` or other files) to a link named after the deck folder (`--name=…`). `--preview` publishes a separate link without touching the main one; `--dry-run` shows the commands. Vercel/Cloudflare need a one-time `npx vercel login` / `npx wrangler login`; GitHub uses `gh` and a `<you>/slides` repo with one folder per deck. Publishing is public — run it only when the user asks. **Speaker notes are left out** of the published copy unless `--keep-notes` (anyone with the link could read them), and the published copy hides `E`, `K` and `X`. **Overwrite guard:** re-deploying the same deck updates its link; if a *different* deck already uses that name it stops with exit code 2 — ask the user whether to replace it (`--force`) or pick another `--name` |
-| `node scripts/bundle.mjs <deck.html> [--all-subsets]` | One self-contained offline `.html` with fonts embedded |
+| `node scripts/bundle.mjs <deck.html> [--all-subsets] [--external-media]` | One self-contained offline `.html` with fonts embedded; `--external-media` keeps video/audio as files next to it; warns past common hosting limits |
 | `node scripts/sync-runtime.mjs [--check]` | Copy `runtime/` into every template (edit runtime files only in `runtime/`) |
 | `npm test` | Runtime-copy check + headless test of all templates and the demo (also runs in GitHub Actions) |
 

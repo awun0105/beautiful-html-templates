@@ -66,6 +66,11 @@ Giao diện các bảng là tiếng Việt khi deck viết bằng tiếng Việt
 
 Mẫu nào cũng chạy được biểu đồ động, thanh trượt, nút "xem đáp án", đồng hồ đếm ngược — hợp cho bài giảng. Agent viết các phần này bằng `DeckKit.widget`, `DeckKit.plot`, `DeckKit.bind`; màu tự lấy theo mẫu. Xem thử: mở [`examples/deck-kit-demo/index.html`](./examples/deck-kit-demo/index.html).
 
+## Video, âm thanh và chuyển động
+
+- **Video, âm thanh, YouTube**: chèn `<video src="clip.mp4">`, `<audio src="nhac.mp3">` hoặc khung YouTube vào slide (trong Markdown: `![](clip.mp4)`, `![](nhac.mp3)`, hoặc dán link YouTube trên một dòng riêng). Không có gì tự phát — bấm để phát, có sẵn nút tắt tiếng; chuyển sang slide khác là tự dừng và quay về đầu.
+- **Chuyển động**: các mẫu giữ nguyên như thiết kế gốc. Khi bạn muốn slide "sống động" hơn, cứ nhờ agent — agent làm theo hướng dẫn trong [`animation-patterns.md`](./animation-patterns.md) (chọn hiệu ứng theo cảm giác, chữ hiện dần, xuất hiện lần lượt, số đếm lên…); bản in PDF vẫn hiện đầy đủ.
+
 ## Sửa slide
 
 - **Sửa nhanh bằng tay (`E`)** — bấm `E`, click vào chữ hay hình trên slide: kéo để di chuyển, kéo núm để đổi cỡ, double-click để gõ lại chữ, `Del` để ẩn, `Ctrl+Z` để hoàn tác. Bấm `E` lần nữa là **lưu thẳng vào file HTML** (Chrome/Edge; chọn file deck một lần). Chỉ đúng chỗ bạn sửa bị thay đổi.

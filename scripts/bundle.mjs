@@ -5,14 +5,22 @@
  * url()s are inlined, and Google Fonts are downloaded and embedded as woff2.
  *
  * Usage:
- *   node scripts/bundle.mjs <deck.html> [out.html] [--subsets=latin,latin-ext,vietnamese | --all-subsets]
+ *   node scripts/bundle.mjs <deck.html> [out.html] [--subsets=latin,latin-ext,vietnamese | --all-subsets] [--external-media]
+ *
+ * --external-media  copy video / audio files next to the output (media/…)
+ *                   instead of inlining them: base64 makes them ~33% bigger
+ *                   and hosts limit single-file size (deploy.mjs uses this)
+ *
+ * Prints the biggest inlined files and warns when the result passes common
+ * hosting limits (Cloudflare Pages 25 MiB per file, GitHub 50 MB warning /
+ * 100 MB hard limit).
  *
  * Default output: <deck>.bundle.html next to the input. Only the font subsets
  * listed are embedded (Google splits each font into latin, cyrillic, greek…);
  * the default covers English and Vietnamese and keeps the file small.
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, statSync, copyFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname, extname, basename } from 'node:path';
 
 const args = process.argv.slice(2);
@@ -127,10 +135,22 @@ html = html.replace(/<script\b([^>]*)\bsrc=["']([^"']+)["']([^>]*)><\/script>/gi
 });
 
 // Images, video posters and sources.
+const MEDIA_EXT = /\.(mp4|webm|mov|m4v|ogv|mp3|wav|ogg|oga|m4a|aac|flac|opus)$/i;
+const big = [];          // [bytes, file] of what went into the output
+const copied = [];
 html = html.replace(/(<(?:img|source|video|audio)\b[^>]*?\b(?:src|poster)=)(["'])([^"']+)\2/gi, (m, pre, q, src) => {
   if (!isInlineable(src)) return m;
   const f = localFile(src, baseDir);
   if (!f) return m;
+  const size = statSync(f).size;
+  if (flags['external-media'] && MEDIA_EXT.test(f)) {
+    const name = `media/${basename(f)}`;
+    mkdirSync(resolve(dirname(outPath), 'media'), { recursive: true });
+    copyFileSync(f, resolve(dirname(outPath), name));
+    copied.push([size, name]);
+    return `${pre}${q}${name}${q}`;
+  }
+  big.push([size, src]);
   stats.assets++;
   return `${pre}${q}${dataUri(f)}${q}`;
 });
@@ -146,3 +166,15 @@ const remote = [...new Set([...html.matchAll(/\b(?:src|href)=["'](https?:\/\/[^"
 if (stats.skipped) console.log(`Skipped ${stats.skipped} font blocks outside --subsets=${subsets.join(',')} (use --all-subsets for CJK etc.).`);
 if (remote.length) console.log('Still remote (needs internet):\n  ' + remote.join('\n  '));
 if (stats.missing.length) console.log('Not found, left as-is:\n  ' + [...new Set(stats.missing)].join('\n  '));
+if (copied.length) console.log(`Copied ${copied.length} media file(s) next to it: ${copied.map(([b, n]) => `${n} (${mb(b)})`).join(', ')}`);
+
+// Size check against common hosting limits.
+function mb(b) { return (b / 1048576).toFixed(1) + ' MB'; }
+const total = Buffer.byteLength(html);
+const heavy = big.filter(([b]) => b > 1048576).sort((a, b) => b[0] - a[0]).slice(0, 3);
+if (heavy.length) console.log('Biggest inlined files: ' + heavy.map(([b, n]) => `${n} (${mb(b)}, ~${mb(b * 4 / 3)} once inlined)`).join(', '));
+const files = [[total, basename(outPath)], ...copied];
+const over = (limit) => files.filter(([b]) => b > limit);
+if (over(100 * 1048576).length) console.log(`⚠ Over 100 MB: ${over(100 * 1048576).map(([b, n]) => `${n} ${mb(b)}`).join(', ')} — GitHub rejects files this big, Cloudflare Pages too. Put long videos on YouTube and embed the link.`);
+else if (over(50 * 1048576).length) console.log(`⚠ Over 50 MB: ${over(50 * 1048576).map(([b, n]) => `${n} ${mb(b)}`).join(', ')} — too big for Cloudflare Pages (25 MiB per file); GitHub warns. Consider YouTube for videos.`);
+else if (over(25 * 1048576).length) console.log(`⚠ Over 25 MiB: ${over(25 * 1048576).map(([b, n]) => `${n} ${mb(b)}`).join(', ')} — Cloudflare Pages won't accept it (25 MiB per file); Vercel and GitHub Pages are fine.`);

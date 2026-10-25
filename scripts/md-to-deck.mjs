@@ -34,6 +34,8 @@
  *   a line "|||"                 → two columns (left | right)
  *   only "## title" + one image  → full image
  *   <!-- layout: stats -->        list items "**42%** label" become stat cards
+ *   ![](clip.mp4) / ![](song.mp3) video / audio player with controls (never autoplays)
+ *   a YouTube link on its own line  embedded player
  * Override any slide with <!-- layout: cover|section|bullets|columns|quote|stats|image -->.
  * Other per-slide keys: sec, min, title. Raw HTML lines pass through untouched
  * (embed a <canvas> + <script> with DeckKit.widget for live demos).
@@ -132,11 +134,24 @@ function asset(srcRef) {
   }
   return assets.get(file);
 }
+/** ![alt](file): picture, video or audio by extension. Players get controls; nothing autoplays. */
+function media(src, alt) {
+  const ext = (src.split(/[?#]/)[0].match(/\.(\w+)$/) || [])[1]?.toLowerCase();
+  if (/^(mp4|webm|mov|m4v|ogv)$/.test(ext || '')) return `<video src="${esc(src)}" controls preload="metadata" playsinline title="${alt}"></video>`;
+  if (/^(mp3|wav|ogg|oga|m4a|aac|flac|opus)$/.test(ext || '')) return `<audio src="${esc(src)}" controls preload="metadata" title="${alt}"></audio>`;
+  return `<img src="${esc(src)}" alt="${alt}">`;
+}
+/** A YouTube link on its own line → embedded player (start time kept). */
+function youtube(line) {
+  const m = line.trim().match(/^https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})(?:[?&#].*?(?:t|start)=(\d+))?/);
+  if (!m) return null;
+  return `<div class="embed"><iframe src="https://www.youtube.com/embed/${m[1]}?rel=0${m[2] ? `&start=${m[2]}` : ''}" title="YouTube video" allow="fullscreen; picture-in-picture; encrypted-media" allowfullscreen></iframe></div>`;
+}
 function inline(s) {
   const codes = [];
   s = s.replace(/`([^`]+)`/g, (m, c) => { codes.push(`<code>${esc(c)}</code>`); return `\u0000${codes.length - 1}\u0000`; });
   s = esc(s)
-    .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (m, alt, u) => `<img src="${esc(asset(u.replace(/&amp;/g, '&')))}" alt="${alt}">`)
+    .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (m, alt, u) => media(asset(u.replace(/&amp;/g, '&')), alt))
     .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2">$1</a>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/(^|[^\w*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>')
@@ -157,6 +172,7 @@ function blocks(lines) {
       html.push(`<pre class="code"${langTag ? ` data-lang="${esc(langTag)}"` : ''}><code>${esc(body.join('\n'))}</code></pre>`);
       continue;
     }
+    if (youtube(l)) { html.push(youtube(l)); i++; continue; }
     if (/^\s*</.test(l)) { // raw HTML block: until a blank line
       const body = [];
       for (; i < lines.length && lines[i].trim(); i++) body.push(lines[i]);
@@ -231,7 +247,7 @@ const slides = rawSlides.map((raw, idx) => {
     else if (h1 && content.length <= 2 && !content.slice(1).some((l) => /^\s*[-*>|]/.test(l))) layout = 'section';
     else if (content.some((l) => l.trim() === '|||')) layout = 'columns';
     else if (content.length && content.every((l) => /^>|^[—–-]{1,2}\s/.test(l) || /^#{1,2}\s/.test(l)) && content.some((l) => /^>/.test(l))) layout = 'quote';
-    else if (h2 && content.length === 2 && /^!\[[^\]]*\]\([^)]+\)\s*$/.test(content[1])) layout = 'image';
+    else if (h2 && content.length === 2 && (/^!\[[^\]]*\]\([^)]+\)\s*$/.test(content[1]) || youtube(content[1]))) layout = 'image';
     else layout = 'bullets';
   }
   const titleLine = content.find((l) => /^#{1,2}\s/.test(l));
@@ -358,6 +374,10 @@ ${fontLink}
   .stat .lbl { font-size: 32px; color: var(--mute); }
   .figure { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
   .figure img { max-height: 760px; }
+  video { max-width: 100%; max-height: 760px; border-radius: 14px; background: #000; }
+  audio { width: min(900px, 100%); }
+  .embed { position: relative; width: min(1400px, 100%); aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #000; }
+  .embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 </style>
 </head>
 <body>

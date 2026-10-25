@@ -20,9 +20,11 @@
  * (seen locally, or in the live copy online), deploy asks before overwriting
  * (and refuses when there's no terminal to ask — use --name or --force).
  *
- * What goes online is ONE self-contained file built by bundle.mjs (scripts,
- * images and fonts inlined) — never the rest of the deck folder (CLAUDE.md,
- * drafts, source files).
+ * What goes online is one file built by bundle.mjs (scripts, images and fonts
+ * inlined) plus media/ for video and audio — never the rest of the deck folder
+ * (CLAUDE.md, drafts, source files). Files over a host's size limit stop the
+ * deploy before anything is uploaded (Cloudflare Pages: 25 MiB per file;
+ * GitHub: 100 MB, warning from 50 MB).
  *
  *   vercel      https://<name>.vercel.app            (vercel login once)
  *               --preview → a unique preview URL; every deploy keeps its own URL,
@@ -33,7 +35,7 @@
  *               --preview → …/<name>-preview/ ; each deploy overwrites that folder
  */
 
-import { mkdirSync, mkdtempSync, copyFileSync, existsSync, writeFileSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, copyFileSync, existsSync, writeFileSync, readdirSync, readFileSync, realpathSync, statSync, cpSync } from 'node:fs';
 import { resolve, dirname, join, basename, extname } from 'node:path';
 import { tmpdir, homedir } from 'node:os';
 import { createHash } from 'node:crypto';
@@ -116,7 +118,7 @@ const work = mkdtempSync(join(tmpdir(), 'deck-deploy-'));
 const dist = join(work, name);            // folder name = project name for Vercel
 mkdirSync(dist, { recursive: true });
 console.log(`Building ${name} …`);
-const b = spawnSync(process.execPath, [resolve(root, 'scripts/bundle.mjs'), deck, join(dist, 'index.html')], { encoding: 'utf8' });
+const b = spawnSync(process.execPath, [resolve(root, 'scripts/bundle.mjs'), deck, join(dist, 'index.html'), '--external-media'], { encoding: 'utf8' });
 if (b.status !== 0) { console.error(b.stderr || b.stdout); process.exit(1); }
 console.log('  ' + b.stdout.trim().split('\n')[0]);
 // Stamp the deck id (not its path) so a later deploy can recognise the live
@@ -139,6 +141,22 @@ console.log('  ' + b.stdout.trim().split('\n')[0]);
   console.log(opt['keep-notes'] ? '  Speaker notes included (--keep-notes).' : `  Speaker notes left out${stripped ? '' : ' (none found)'} — add --keep-notes to publish them.`);
 }
 if (/Still remote/.test(b.stdout)) console.log('  ' + b.stdout.trim().split('\n').slice(1).join('\n  '));
+
+// ── Size limits ───────────────────────────────────────────────────────────
+{
+  const MB = 1048576;
+  const all = [];
+  const walk = (d) => readdirSync(d, { withFileTypes: true }).forEach((e) => (e.isDirectory() ? walk(join(d, e.name)) : all.push([statSync(join(d, e.name)).size, join(d, e.name).slice(dist.length + 1)])));
+  walk(dist);
+  const limit = { cloudflare: 25 * MB, github: 100 * MB, vercel: 100 * MB }[to];
+  const tooBig = all.filter(([n]) => n > limit);
+  if (tooBig.length) {
+    console.error(`\n✗ Too big for ${to}: ${tooBig.map(([n, f]) => `${f} (${(n / MB).toFixed(1)} MB)`).join(', ')} — the limit is ${limit / MB} MB per file.`);
+    console.error('  Put long videos on YouTube and embed the link, compress the media, or deploy to a host with a higher limit.');
+    process.exit(1);
+  }
+  if (to === 'github') all.filter(([n]) => n > 50 * MB).forEach(([n, f]) => console.log(`  ⚠ ${f} is ${(n / MB).toFixed(1)} MB — GitHub warns above 50 MB.`));
+}
 
 // ── 2. Publish ────────────────────────────────────────────────────────────
 let url = '';
@@ -189,7 +207,7 @@ if (to === 'github') {
   await guard(`github:${repo}/${folder}`, existsSync(existing) ? readFileSync(existing, 'utf8') : null, `${repo}/${folder}`);
   if (!dry) {
     mkdirSync(join(clone, folder), { recursive: true });
-    copyFileSync(join(dist, 'index.html'), join(clone, folder, 'index.html'));
+    cpSync(dist, join(clone, folder), { recursive: true });   // index.html + media/
     writeFileSync(join(clone, '.nojekyll'), '');
     // A plain list of the decks in this repo at the site root.
     const decks = readdirSync(clone, { withFileTypes: true }).filter((d) => d.isDirectory() && !d.name.startsWith('.') && existsSync(join(clone, d.name, 'index.html'))).map((d) => d.name).sort();

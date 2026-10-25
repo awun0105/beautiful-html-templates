@@ -1884,9 +1884,59 @@
     goto(k);
   }
 
+  // ── Video, audio and embedded players ────────────────────────────────────
+  // Nothing plays by itself: autoplay is ignored and every <video>/<audio>
+  // gets the browser's controls (play, seek, volume, mute). Leaving a slide
+  // stops its media and rewinds it, so coming back shows it unplayed.
+  // YouTube / Vimeo iframes are paused through their player API.
+  const YT = /^https?:\/\/(www\.)?(youtube(-nocookie)?\.com|youtu\.be)\//i;
+  const VIMEO = /^https?:\/\/player\.vimeo\.com\//i;
+  function prepareMedia() {
+    slides.forEach((s) => {
+      s.querySelectorAll('video, audio').forEach((m) => {
+        m.removeAttribute('autoplay');
+        m.autoplay = false;
+        if (!m.hasAttribute('controls')) m.controls = true;
+        if (!m.hasAttribute('preload')) m.preload = 'metadata';
+        if (!m.paused) m.pause();
+      });
+      s.querySelectorAll('iframe[src]').forEach((f) => {
+        const src = f.getAttribute('src');
+        if (YT.test(src) || VIMEO.test(src)) {
+          // No autoplay; YouTube also needs the player API so it can be paused.
+          try {
+            const u = new URL(src, location.href);
+            u.searchParams.delete('autoplay');
+            if (YT.test(src)) { u.searchParams.set('enablejsapi', '1'); u.searchParams.set('playsinline', '1'); }
+            if (u.href !== src) f.src = u.href;
+          } catch (e) {}
+        }
+        if (!f.hasAttribute('allow')) f.setAttribute('allow', 'fullscreen; picture-in-picture; encrypted-media');
+      });
+    });
+  }
+  function stopMedia(s) {
+    if (!s) return;
+    s.querySelectorAll('video, audio').forEach((m) => {
+      try { m.pause(); if (m.currentTime) m.currentTime = 0; } catch (e) {}
+    });
+    s.querySelectorAll('iframe[src]').forEach((f) => {
+      const src = f.getAttribute('src') || '', w = f.contentWindow;
+      if (!w) return;
+      if (YT.test(src)) {
+        // Pause first: a paused YouTube player stays paused after seekTo.
+        ['pauseVideo', 'seekTo'].forEach((func) => w.postMessage(JSON.stringify({ event: 'command', func, args: func === 'seekTo' ? [0, true] : [] }), '*'));
+      } else if (VIMEO.test(src)) {
+        w.postMessage(JSON.stringify({ method: 'pause' }), '*');
+        w.postMessage(JSON.stringify({ method: 'setCurrentTime', value: 0 }), '*');
+      }
+    });
+  }
+
   // ── Navigation hook ──────────────────────────────────────────────────────
   function onChange(i, prev) {
     if (prev >= 0 && slides[prev]) widgetsOn(slides[prev]).forEach((w) => call(w, 'leave'));
+    if (prev >= 0 && prev !== i) stopMedia(slides[prev]);
     cur = i;
     const s = slides[i];
     widgetsOn(s).forEach((w) => { call(w, 'enter'); call(w, 'draw'); });
@@ -2202,13 +2252,15 @@
       cv.classList.add('dk-print-src');
       undo.push(() => { img.remove(); cv.classList.remove('dk-print-src'); });
     }));
-    widgets.forEach((w) => { if (w.slide && w.slide !== slides[cur]) call(w, 'leave'); });
+    // Widgets stay "entered" until the print is done (cleanupPrint), so
+    // entrance states and drawings are what gets printed.
     printUndo = undo;
   }
   function cleanupPrint() {
     if (!printUndo) return;
     printUndo.reverse().forEach((f) => f());
     printUndo = null;
+    widgets.forEach((w) => { if (w.slide && w.slide !== slides[cur]) call(w, 'leave'); });
     if (cur >= 0) widgetsOn(slides[cur]).forEach((w) => call(w, 'draw'));
   }
 
@@ -2254,6 +2306,7 @@
     patchNotes,
     patchEdits,
     patchEditsReport,
+    stopMedia: (i) => stopMedia(slides[i == null ? cur : i]),
     edit: { enter: () => enterEdit(), exit: () => exitEdit(), get on() { return ed.on; }, pending: () => pendingEdits() },
     describe: (node) => describe(node),
     /** Visit every slide (so on-entry content renders), then open the print dialog. */
@@ -2291,6 +2344,7 @@
     if (ROLE === 'mirror') {
       // Preview inside the presenter window: slides only, no chrome, no input.
       ui.host.style.display = 'none';
+      prepareMedia();
       // Previews must stay silent: only the audience screen plays sound.
       const mute = () => document.querySelectorAll('video, audio').forEach((m) => { m.muted = true; });
       mute();
@@ -2306,6 +2360,7 @@
       return;
     }
 
+    prepareMedia();
     setupTouch();
     setupInk();
     document.querySelectorAll('[data-countdown]').forEach(cdRender);

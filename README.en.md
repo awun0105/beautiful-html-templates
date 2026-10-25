@@ -66,6 +66,11 @@ Panels are in Vietnamese when the deck is Vietnamese or your browser prefers Vie
 
 Every template runs live charts, sliders, "show answer" buttons and countdowns — great for teaching. The agent writes them with `DeckKit.widget`, `DeckKit.plot` and `DeckKit.bind`, in the template's colours. Try [`examples/deck-kit-demo/index.html`](./examples/deck-kit-demo/index.html).
 
+## Video, audio and motion
+
+- **Video, audio, YouTube**: put `<video src="clip.mp4">`, `<audio src="song.mp3">` or a YouTube iframe on a slide (in Markdown: `![](clip.mp4)`, `![](song.mp3)`, or a YouTube link on its own line). Nothing autoplays — press play, mute is built in; leaving the slide stops and rewinds it.
+- **Motion**: templates stay as designed. When you want a livelier deck, ask the agent — it follows [`animation-patterns.md`](./animation-patterns.md) (motion by feeling, fade-ups, staggered reveals, count-ups…); printed PDFs still show everything.
+
 ## Editing
 
 - **Quick fixes by hand (`E`)** — press `E`, click text or a picture: drag to move, drag handles to resize, double-click to retype, `Del` to hide, `Ctrl+Z` to undo. Press `E` again to **save into the HTML file** (Chrome/Edge; pick the deck file once). Only what you changed is touched.
