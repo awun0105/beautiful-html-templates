@@ -181,7 +181,7 @@ if (to === 'github') {
   const exists = authed && quiet('gh', ['repo', 'view', repo, '--json', 'name']).status === 0;
   if (!exists) {
     console.log(`Creating public repo ${repo} for your decks …`);
-    run('gh', ['repo', 'create', repo, '--public', '--description', 'Slide decks published with beautiful-html-templates']);
+    run('gh', ['repo', 'create', repo, '--public', '--description', 'Slide decks published with deck-kit']);
   }
   const clone = join(work, 'repo');
   run('gh', ['repo', 'clone', repo, clone, '--', '--depth', '1'], { allowFail: !exists });

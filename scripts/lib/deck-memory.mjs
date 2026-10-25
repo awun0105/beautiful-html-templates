@@ -24,7 +24,7 @@ corrects something, add it under "Decisions" so it isn't repeated.
 
 ## Design
 - Template: \`${template}\`${source ? ` · built from ${source}` : ''} — keep its fonts, palette, layout grid and decoration
-  (beautiful-html-templates AGENTS.md §3; full spec in templates/${template}/design.md)
+  (deck-kit AGENTS.md §3; full spec in templates/${template}/design.md)
 - Colour meanings: <FILL IN — e.g. blue = prediction, orange = measurement>
 - Rules: <FILL IN — e.g. max 4 bullets per slide, one idea per slide>
 
@@ -38,7 +38,7 @@ corrects something, add it under "Decisions" so it isn't repeated.
 ## Working on this deck
 - \`index.html\` is the deck. Per slide: \`data-title\`, \`data-sec\`, \`data-min\`, and speaker notes in \`<aside class="notes">\`.
 - The user may point at an element with **K** (copies file, line, slide and selector) — edit exactly that.
-- After changes run check-deck.mjs; share with export.mjs or deploy.mjs (beautiful-html-templates/scripts).
+- After changes run check-deck.mjs; share with export.mjs or deploy.mjs (deck-kit/scripts).
 `;
 
 const VI = ({ title, template, source }) => `# ${title} — bộ nhớ của deck
@@ -54,7 +54,7 @@ hoặc sửa điều gì, ghi vào mục "Quyết định & góp ý" để khôn
 
 ## Thiết kế
 - Mẫu: \`${template}\`${source ? ` · dựng từ ${source}` : ''} — giữ nguyên font, bảng màu, lưới bố cục và chi tiết trang trí
-  (beautiful-html-templates AGENTS.md §3; mô tả đầy đủ ở templates/${template}/design.md)
+  (deck-kit AGENTS.md §3; mô tả đầy đủ ở templates/${template}/design.md)
 - Ý nghĩa màu: <ĐIỀN VÀO — ví dụ: xanh dương = dự đoán, cam = phép đo>
 - Quy tắc: <ĐIỀN VÀO — ví dụ: tối đa 4 gạch đầu dòng mỗi slide>
 
@@ -68,7 +68,7 @@ hoặc sửa điều gì, ghi vào mục "Quyết định & góp ý" để khôn
 ## Cách làm việc với deck này
 - \`index.html\` là deck. Mỗi slide có \`data-title\`, \`data-sec\`, \`data-min\`, ghi chú người nói trong \`<aside class="notes">\`.
 - Người dùng có thể chỉ một phần tử bằng phím **K** (chép đường dẫn file, dòng, slide và selector) — sửa đúng phần tử đó.
-- Sửa xong chạy check-deck.mjs; chia sẻ bằng export.mjs hoặc deploy.mjs (beautiful-html-templates/scripts).
+- Sửa xong chạy check-deck.mjs; chia sẻ bằng export.mjs hoặc deploy.mjs (deck-kit/scripts).
 `;
 
 /** Create dir/CLAUDE.md unless one exists. Returns the path when written. */

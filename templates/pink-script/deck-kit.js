@@ -38,7 +38,8 @@
  *   DeckKit.palette(el)                    the template's ink / bg / accents
  *   [data-reveal="id"]  [data-countdown="5:00" data-autostart]
  *
- * UI strings follow <html lang>: Vietnamese for "vi", English otherwise.
+ * UI strings: Vietnamese when the deck is lang="vi" or the browser prefers
+ * Vietnamese, English otherwise (<meta name="deck-kit-lang"> overrides).
  */
 
 (() => {
@@ -116,7 +117,19 @@
         ['D', 'Vẽ lên slide (C xoá, Backspace hoàn tác)'], ['E', 'Chỉnh sửa (E lần nữa để lưu)'], ['K', 'Chép vị trí phần tử cho agent'], ['X', 'Xuất & chia sẻ (PDF, PPTX, deploy)'], ['F', 'Toàn màn hình'], ['Ctrl+P', 'In mọi slide'], ['Esc', 'Đóng bảng'], ['?', 'Bảng này']],
     },
   };
-  const L = STR[(document.documentElement.lang || '').slice(0, 2).toLowerCase()] || STR.en;
+  // Panel language: Vietnamese when the deck is in Vietnamese or the
+  // presenter's browser prefers Vietnamese (the controls are for the person
+  // presenting); English otherwise. <meta name="deck-kit-lang" content="en|vi">
+  // forces one.
+  const uiLang = (() => {
+    const forced = document.querySelector('meta[name="deck-kit-lang"]');
+    if (forced && STR[forced.content]) return forced.content;
+    const deck = (document.documentElement.lang || '').slice(0, 2).toLowerCase();
+    if (deck === 'vi') return 'vi';
+    const browser = ((navigator.languages && navigator.languages[0]) || navigator.language || '').slice(0, 2).toLowerCase();
+    return browser === 'vi' ? 'vi' : 'en';
+  })();
+  const L = STR[uiLang];
   const fmt = (s, o) => s.replace(/\{(\w+)\}/g, (_, k) => o[k]);
   const mmss = (sec) => {
     const s = Math.max(0, Math.round(sec));
@@ -182,10 +195,20 @@
     .dk-timer.dk-show { display: flex; gap: 10px; align-items: baseline; }
     .dk-timer b { font-size: 22px; }
     .dk-ahead { color: #4ADE80; } .dk-behind { color: #F87171; } .dk-ontime { color: #93C5FD; } .dk-paused { color: #FBBF24; }
-    .dk-help { left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 14px; padding: 20px 26px; min-width: 340px; }
-    .dk-help h3 { margin: 0 0 10px; font-size: 18px; }
-    .dk-help table { border-collapse: collapse; }
-    .dk-help td { padding: 3px 14px 3px 0; }
+    /* Dialogs (? help, X export & share) share one look. */
+    .dk-dialog { left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 14px; padding: 18px 24px 16px;
+      width: min(600px, 92vw); max-height: 88vh; overflow: auto; }
+    .dk-dialog h3 { margin: 0; padding-bottom: 12px; font-size: 18px; font-weight: 700; border-bottom: 1px solid rgba(148,163,184,.25); }
+    .dk-dialog .dk-row { display: grid; grid-template-columns: 120px 1fr; gap: 8px 14px; align-items: start;
+      padding: 9px 0; border-bottom: 1px solid rgba(148,163,184,.12); }
+    .dk-dialog .dk-row:last-of-type { border-bottom: 0; }
+    .dk-dialog .dk-row > b { color: #93C5FD; font-weight: 600; padding-top: 2px; }
+    .dk-dialog button { font: inherit; font-weight: 600; color: #fff; background: rgba(148,163,184,.16); border: 0;
+      border-radius: 8px; padding: 6px 14px; cursor: pointer; }
+    .dk-dialog button:hover { background: rgba(148,163,184,.3); }
+    .dk-dialog .dk-note { color: #94A3B8; font-size: 12px; margin-top: 10px; }
+    .dk-help .dk-row { padding: 6px 0; }
+    .dk-help .dk-row > b kbd { color: #93C5FD; }
     kbd { font: 600 13px ui-monospace, Menlo, Consolas, monospace; background: rgba(255,255,255,.14); border-radius: 5px; padding: 2px 7px; }
     .dk-toast { left: 50%; top: 16px; transform: translateX(-50%); border-radius: 999px; padding: 7px 16px; font-size: 14px; pointer-events: none; }
     .dk-rotate { left: 8px; right: 8px; top: 8px; border-radius: 10px; padding: 10px 14px; font-weight: 600; }
@@ -199,18 +222,12 @@
       box-shadow: 0 0 14px 6px rgba(255,42,42,.45); }
     .dk-laser.dk-show { display: block; }
     /* export & share */
-    .dk-share { left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 14px; padding: 20px 24px; width: min(640px, 92vw); }
-    .dk-share h3 { margin: 0 0 14px; font-size: 18px; }
-    .dk-share .dk-row { display: grid; grid-template-columns: 110px 1fr; gap: 10px 14px; align-items: start; padding: 12px 0; border-top: 1px solid rgba(148,163,184,.2); }
-    .dk-share .dk-row > b { color: #93C5FD; font-weight: 600; padding-top: 4px; }
+    .dk-share .dk-row { padding: 12px 0; }
     .dk-share .dk-opts { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
     .dk-share label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
     .dk-share input[type=text] { font: inherit; color: #fff; background: rgba(148,163,184,.14); border: 1px solid rgba(148,163,184,.3); border-radius: 6px; padding: 3px 8px; width: 180px; }
-    .dk-share button { font: 600 14px system-ui, sans-serif; color: #fff; background: #2563EB; border: 0; border-radius: 8px; padding: 6px 14px; cursor: pointer; }
-    .dk-share button:hover { background: #1D4ED8; }
     .dk-share code { display: block; margin-top: 8px; font: 12px/1.45 ui-monospace, Menlo, monospace; color: #CBD5E1; background: rgba(0,0,0,.25);
       border-radius: 6px; padding: 6px 8px; white-space: pre-wrap; word-break: break-all; }
-    .dk-share .dk-note { color: #94A3B8; font-size: 12px; margin-top: 10px; }
     /* edit mode */
     .dk-edbar { top: 0; left: 50%; transform: translateX(-50%); border-radius: 0 0 12px 12px; padding: 8px 16px; font-size: 14px; white-space: nowrap; }
     .dk-edbar.dk-show { display: flex; gap: 14px; align-items: center; }
@@ -419,13 +436,13 @@
     const notes = el('div', 'dk-panel dk-notes', '<div class="dk-hd"></div><div class="dk-tx"></div><div class="dk-next"></div>');
     const menu = el('div', 'dk-panel dk-menu', `<h2>${esc(L.menu)}</h2><div class="dk-items"></div>`);
     const tmr = el('div', 'dk-panel dk-timer');
-    const help = el('div', 'dk-panel dk-help',
-      `<h3>${esc(L.help)}</h3><table>${L.keys.filter(([k]) => !(PUBLISHED && /^[EKX]$/.test(k))).map(([k, d]) => `<tr><td><kbd>${esc(k)}</kbd></td><td>${esc(d)}</td></tr>`).join('')}</table>`);
+    const help = el('div', 'dk-panel dk-dialog dk-help',
+      `<h3>${esc(L.help)}</h3>${L.keys.filter(([k]) => !(PUBLISHED && /^[EKX]$/.test(k))).map(([k, d]) => `<div class="dk-row"><b><kbd>${esc(k)}</kbd></b><span>${esc(d)}</span></div>`).join('')}`);
     const toast = el('div', 'dk-panel dk-toast');
     const blankEl = el('div', 'dk-blank');
     const edbar = el('div', 'dk-panel dk-edbar', `<span>${L.editBar}</span><span class="dk-edn"></span>`);
     const chk = (k, label, on) => `<label><input type="checkbox" data-f="${k}"${on ? ' checked' : ''}>${esc(label)}</label>`;
-    const share = el('div', 'dk-panel dk-share', `
+    const share = el('div', 'dk-panel dk-dialog dk-share', `
       <h3>${esc(L.share)}</h3>
       <div class="dk-row"><b>${esc(L.printNow)}</b><div class="dk-opts"><button type="button" data-a="print">${esc(L.print)}</button></div></div>
       <div class="dk-row"><b>${esc(L.exportFiles)}</b><div>
@@ -1796,10 +1813,10 @@
   function toolsDir() {
     const meta = document.querySelector('meta[name="deck-kit-tools"]');
     if (meta && meta.content) return meta.content.replace(/\/$/, '');
-    const path = localPath();
-    const k = path.indexOf('/beautiful-html-templates/');
-    if (location.protocol === 'file:' && k >= 0) return path.slice(0, k) + '/beautiful-html-templates/scripts';
-    return '$HOME/.agents/skills/beautiful-html-templates/scripts';
+    // A deck inside the repo itself (templates/…, examples/…).
+    const m = localPath().match(/^(.*\/deck-kit)\/(templates|examples)\//);
+    if (location.protocol === 'file:' && m) return m[1] + '/scripts';
+    return '$HOME/.agents/skills/deck-kit/scripts';
   }
   // file:///C:/x.html has pathname /C:/x.html on Windows; drop the leading slash there.
   const localPath = () => decodeURIComponent(location.pathname).replace(/^\/([A-Za-z]:\/)/, '$1');

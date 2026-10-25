@@ -1,53 +1,115 @@
-# beautiful-html-templates
+# deck-kit
 
-A library of reusable HTML slide templates designed so that any coding agent can pick the right one and produce a beautiful deck on the user's behalf, automatically.
+**Tiếng Việt** · [English](./README.en.md)
 
-Agents using the library should read [`AGENTS.md`](./AGENTS.md). It's the operating manual: how to read `index.json`, match the user's brief to a template, clone it, and adapt the content.
+Bộ công cụ làm slide bằng HTML cho người dùng coding agent (Claude Code, Codex, Gemini CLI…): **34 mẫu thiết kế đẹp sẵn**, kèm **bộ điều khiển trình chiếu** chạy ngay trong file HTML, và **các lệnh** để xuất PDF/PowerPoint, nhập PowerPoint có sẵn, đưa deck lên mạng.
 
-## Get started
+Bạn chỉ cần nói với agent muốn làm bài thuyết trình gì. Agent chọn mẫu, đổ nội dung vào, bạn mở file ra là trình chiếu được — không cần cài PowerPoint, không cần mạng.
 
-Copy this to your coding agent:
+## Có gì trong này
 
-```
-Clone https://github.com/zarazhangrui/beautiful-html-templates and follow the instructions in AGENTS.md to build me a beautiful HTML slide deck.
-```
+- **34 mẫu slide** với phong cách rất khác nhau: tạp chí, tối giản, cổ động, retro, pastel, pixel game… (xem [thư viện mẫu](#thư-viện-mẫu) ở cuối).
+- **deck-kit.js** — "bảng điều khiển" gắn sẵn vào mọi mẫu: màn hình người trình bày, ghi chú, đồng hồ, con trỏ laser, vẽ lên slide, chỉnh sửa trực tiếp, in PDF…
+- **Các lệnh trong `scripts/`** — tạo deck mới, viết bằng Markdown, nhập PowerPoint, kiểm tra lỗi, xuất file, deploy.
 
-## Presenter features
+## Bắt đầu nhanh
 
-Every template ships with [`deck-kit.js`](./runtime/deck-kit.js), a presenter layer that sits on top of the template's design:
+**Cách 1 — nhờ agent (khuyên dùng).** Nói với agent:
 
-- **Presenter view** (`P`): a second window with the current and next slide, speaker notes and a timer against your plan; the projector shows only the slide. Sliders and answers sync both ways, so you can run demos from the laptop, and speaker notes can be edited there and saved back into the HTML.
-- **Speaker notes** (`N`), **slide menu** (`M`) with planned minutes, **talk timer** (`T`).
-- **In the room**: black/white screen (`B`/`W`), laser pointer (`L`), draw on slides (`D`), fullscreen (`F`), `#N` deep links, swipe.
-- **Interactive slides**: `DeckKit.widget()` with `DeckKit.plot()` / `DeckKit.bind()` for live charts and sliders in the template's colours; `data-reveal` answers, `data-countdown` timers.
-- **Print** (`Ctrl+P`): every slide visited first so charts fill in, then one slide per page, canvases included.
-- **Edit mode** (`E`): move, resize, retype or hide elements right on the slide; `E` again saves into the HTML file, touching only what you changed.
-- **Point at things for your agent** (`K`): click an element to copy its file, line, slide and selector.
-- **Export & share** (`X`): print to PDF, or copy the exact command for PPTX / PNG / handout exports and for deploying to Vercel, Cloudflare Pages or GitHub Pages.
-- **Links between slides**: `<a href="#slide-id">` jumps there, also in the PDF.
+> Dùng deck-kit làm cho tôi bộ slide về [chủ đề], [số phút] phút, để tôi trình bày trên lớp.
 
-See [`examples/deck-kit-demo`](./examples/deck-kit-demo/index.html) and [`AGENTS.md` § 8](./AGENTS.md#8-presenter-features-deck-kitjs).
+Agent sẽ hỏi bạn vài câu (dịp gì, muốn cảm giác ra sao, deck để đọc hay để nói), cho bạn xem trước 3 mẫu, rồi làm bộ slide hoàn chỉnh kèm ghi chú người nói. Cách làm việc chi tiết của agent nằm trong [`AGENTS.md`](./AGENTS.md).
 
-## Tools
+**Cách 2 — tự làm:**
 
 ```bash
-npm install                                             # once (uses your installed Chrome)
-node scripts/new-deck.mjs vellum my-talk --lang=vi      # start from a template
-node scripts/md-to-deck.mjs talk.md --theme=vellum      # or write it in Markdown
-node scripts/pptx-to-deck.mjs talk.pptx --theme=vellum  # or import a PowerPoint
-node scripts/check-deck.mjs my-talk/index.html          # lint before presenting
-node scripts/export.mjs my-talk/index.html              # PDF + PNGs + handout with notes
-node scripts/export.mjs my-talk/index.html --compact --pptx   # small PDF, PowerPoint with notes
-node scripts/export.mjs my-talk/index.html --pptx-editable    # PowerPoint with editable text (+ fonts/ to install)
-node scripts/bundle.mjs my-talk/index.html              # one offline .html file
-node scripts/deploy.mjs my-talk/index.html --to=vercel   # or cloudflare / github → a shareable link
+git clone https://github.com/awun0105/deck-kit.git
+cd deck-kit && npm install            # một lần; dùng Chrome có sẵn trên máy
+
+node scripts/new-deck.mjs vellum ~/slides/kalman --lang=vi --title="Bộ lọc Kalman"
+# mở ~/slides/kalman/index.html, sửa nội dung, rồi:
+node scripts/check-deck.mjs ~/slides/kalman/index.html
 ```
 
-Details in [`AGENTS.md` § 9](./AGENTS.md#9-tools-scripts).
+Bạn đã có slide PowerPoint hoặc thích viết bằng Markdown?
 
-## Gallery
+```bash
+node scripts/pptx-to-deck.mjs bai-cu.pptx --theme=vellum      # nhập từ PowerPoint
+node scripts/md-to-deck.mjs dan-y.md --theme=vellum           # viết bằng Markdown (xem examples/md-deck/talk.md)
+```
 
-All 34 templates. Three slides per template (cover · mid-deck · later) to give a sense of how each visual system handles different layouts. Click any template name to open its folder on GitHub — the HTML, metadata, and any sibling assets are all there.
+> Cần **Node.js** và **Google Chrome**. Nếu dùng hệ thống skills-hub, repo nằm ở `~/.agents/skills/deck-kit`.
+
+## Khi trình chiếu
+
+Mở file `index.html` bằng trình duyệt là trình chiếu được. Bấm `?` để xem toàn bộ phím tắt.
+
+| Phím | Làm gì |
+|---|---|
+| `←` `→` `Space` `1`–`9` | Chuyển slide |
+| `P` | **Màn hình người trình bày** — mở cửa sổ thứ hai có slide hiện tại, slide kế tiếp, ghi chú và đồng hồ. Để cửa sổ này trên laptop, cửa sổ gốc kéo sang máy chiếu (màn hình để chế độ *mở rộng*). Kéo thanh trượt ở cửa sổ nào thì cửa sổ kia đổi theo |
+| `N` | Ghi chú người nói (hiện ngay trên màn hình) |
+| `M` | Menu các slide, có phút dự kiến |
+| `T` | Đồng hồ: đã nói bao lâu, đang nhanh hay chậm so với kế hoạch |
+| `B` / `W` | Tắt màn hình đen / trắng |
+| `L` | Con trỏ laser |
+| `D` | Vẽ lên slide (`C` xoá, `Backspace` hoàn tác) |
+| `E` | **Chỉnh sửa** — xem bên dưới |
+| `K` | Chép vị trí một phần tử để gửi cho agent |
+| `X` | Xuất file & chia sẻ |
+| `F` | Toàn màn hình |
+| `Ctrl+P` | In ra PDF, mỗi slide một trang (biểu đồ hiện đủ) |
+
+Giao diện các bảng là tiếng Việt khi deck viết bằng tiếng Việt hoặc trình duyệt của bạn đặt tiếng Việt.
+
+## Slide tương tác
+
+Mẫu nào cũng chạy được biểu đồ động, thanh trượt, nút "xem đáp án", đồng hồ đếm ngược — hợp cho bài giảng. Agent viết các phần này bằng `DeckKit.widget`, `DeckKit.plot`, `DeckKit.bind`; màu tự lấy theo mẫu. Xem thử: mở [`examples/deck-kit-demo/index.html`](./examples/deck-kit-demo/index.html).
+
+## Sửa slide
+
+- **Sửa nhanh bằng tay (`E`)** — bấm `E`, click vào chữ hay hình trên slide: kéo để di chuyển, kéo núm để đổi cỡ, double-click để gõ lại chữ, `Del` để ẩn, `Ctrl+Z` để hoàn tác. Bấm `E` lần nữa là **lưu thẳng vào file HTML** (Chrome/Edge; chọn file deck một lần). Chỉ đúng chỗ bạn sửa bị thay đổi.
+- **Nhờ agent sửa (`K`)** — bấm `K` rồi click vào chỗ cần sửa; vị trí chính xác (file, slide, phần tử) được chép vào clipboard. Dán vào chat kèm yêu cầu: *"[vị trí] — viết lại câu này ngắn hơn"*.
+- **Ghi chú người nói** — sửa ngay trong màn hình người trình bày (`P` → ✎ Sửa → 💾 Lưu vào file).
+- **`CLAUDE.md` của từng deck** — "trí nhớ" của deck cho agent: mục đích, khán giả, giọng văn, quy tắc, các góp ý của bạn. Lần sau mở phiên chat mới, agent đọc lại là làm đúng ý bạn mà không phải dặn lại.
+
+## Xuất file & chia sẻ
+
+Bấm `X` trong deck: in PDF ngay, hoặc tick định dạng / nơi deploy rồi bấm **Chép lệnh** — dán vào terminal hay gửi cho agent chạy.
+
+```bash
+node scripts/export.mjs ~/slides/kalman/index.html                      # PDF + ảnh PNG + bản phát tay có ghi chú
+node scripts/export.mjs ~/slides/kalman/index.html --compact --pptx     # PDF nhẹ để gửi email, PowerPoint
+node scripts/export.mjs ~/slides/kalman/index.html --pptx-editable      # PowerPoint sửa được chữ (+ thư mục font để cài)
+node scripts/bundle.mjs ~/slides/kalman/index.html                      # một file HTML duy nhất, chạy không cần mạng
+node scripts/deploy.mjs ~/slides/kalman/index.html --to=vercel          # hoặc cloudflare / github → có link chia sẻ
+```
+
+Về deploy:
+- Mỗi deck một link riêng (theo tên thư mục, đổi bằng `--name`). Deploy lại cùng deck thì cập nhật link đó; nếu lỡ trùng tên với **deck khác**, lệnh sẽ hỏi trước khi ghi đè.
+- **Ghi chú người nói không được đưa lên** (ai có link cũng đọc được) — thêm `--keep-notes` nếu muốn kèm.
+- `--preview` tạo link xem thử, không đụng link chính. `--dry-run` chỉ xem trước, không đăng gì.
+- Vercel / Cloudflare cần đăng nhập một lần (`npx vercel login`, `npx wrangler login`); GitHub Pages dùng `gh` có sẵn.
+
+## Các lệnh
+
+| Lệnh | Để làm gì |
+|---|---|
+| `scripts/new-deck.mjs <mẫu> <thư-mục>` | Tạo deck mới từ một mẫu |
+| `scripts/md-to-deck.mjs talk.md --theme=<mẫu>` | Markdown → deck (bố cục chuẩn, màu và font của mẫu) |
+| `scripts/pptx-to-deck.mjs bai.pptx --theme=<mẫu>` | Nhập PowerPoint: tiêu đề, gạch đầu dòng, bảng, ảnh, ghi chú |
+| `scripts/check-deck.mjs <deck.html>` | Kiểm tra lỗi: chữ mẫu chưa thay, ảnh hỏng, chữ tràn khỏi slide… |
+| `scripts/export.mjs <deck.html>` | Xuất PDF, PNG, bản phát tay, PowerPoint |
+| `scripts/bundle.mjs <deck.html>` | Gói thành một file chạy offline |
+| `scripts/deploy.mjs <deck.html> --to=…` | Đưa lên Vercel, Cloudflare Pages hoặc GitHub Pages |
+| `scripts/apply-changes.mjs <deck.html> <file.json>` | Ghép ghi chú / chỉnh sửa đã lưu từ Firefox, Safari |
+| `npm test` | Chạy bộ kiểm tra tự động cho cả 34 mẫu |
+
+Hướng dẫn đầy đủ (cho agent và cho người muốn đi sâu): [`AGENTS.md`](./AGENTS.md) — mục 8 (trình chiếu), 9 (công cụ), 10 (làm việc lâu dài với một deck).
+
+## Thư viện mẫu
+
+34 mẫu, mỗi mẫu 3 slide minh hoạ (bìa · giữa bài · cuối bài). Bấm tên mẫu để xem thư mục của nó.
 
 ### [Soft Editorial](./templates/soft-editorial/)
 
@@ -57,7 +119,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/soft-editorial-10.png" width="32.5%" alt="Soft Editorial — slide 10" />
 </p>
 
-> Cormorant Garamond serif on warm paper with sage, blush, and lemon accents.
+> Chữ serif Cormorant Garamond trên nền giấy ấm, điểm thêm xanh sage, hồng phấn và vàng chanh.
 
 ### [Editorial Forest](./templates/editorial-forest/)
 
@@ -67,7 +129,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/editorial-forest-5.png" width="32.5%" alt="Editorial Forest — slide 5" />
 </p>
 
-> Forest green, dusty pink, and warm cream in Source Serif 4 — quiet, intentional quarterly-review aesthetic.
+> Xanh rừng, hồng phai và kem ấm với font Source Serif 4 — trầm, chỉn chu, hợp báo cáo quý.
 
 ### [Pin & Paper](./templates/pin-and-paper/)
 
@@ -77,7 +139,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/pin-and-paper-3.png" width="32.5%" alt="Pin & Paper — slide 3" />
 </p>
 
-> Yellow paper with safety-pin illustrations, ink-blue handwritten Caveat, paper-grain texture.
+> Giấy vàng có hình kim băng, chữ viết tay Caveat màu mực xanh, vân giấy thật.
 
 ### [Sakura Chroma](./templates/sakura-chroma/)
 
@@ -87,7 +149,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/sakura-chroma-4.png" width="32.5%" alt="Sakura Chroma — slide 4" />
 </p>
 
-> Vintage Japanese cassette-package aesthetic: cream paper, diagonal rainbow ribbons, condensed bold type, JIS-style spec checkboxes.
+> Phong cách vỏ băng cassette Nhật cổ: giấy kem, dải cầu vồng chéo, chữ đậm hẹp.
 
 ### [Stencil & Tablet](./templates/stencil-tablet/)
 
@@ -97,7 +159,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/stencil-tablet-8.png" width="32.5%" alt="Stencil & Tablet — slide 8" />
 </p>
 
-> Bone paper with stencil-cut headlines and a six-color earth palette: archaeology meets brand.
+> Giấy màu xương với tiêu đề kiểu khuôn chữ và bảng 6 màu đất — khảo cổ gặp thương hiệu.
 
 ### [Cobalt Grid](./templates/cobalt-grid/)
 
@@ -107,7 +169,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/cobalt-grid-5.png" width="32.5%" alt="Cobalt Grid — slide 5" />
 </p>
 
-> Electric cobalt italic serifs on a graph-paper canvas, anchored by stair-stepped pixel-glitch decorations and slim hairline rules.
+> Chữ serif nghiêng xanh cobalt trên nền giấy kẻ ô, điểm hoạ tiết pixel bậc thang.
 
 ### [Vellum](./templates/vellum/)
 
@@ -117,7 +179,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/vellum-8.png" width="32.5%" alt="Vellum — slide 8" />
 </p>
 
-> Deep navy canvas with warm-yellow italic Cormorant serifs and a single dusty teal accent. A quiet, scholarly aesthetic.
+> Nền xanh navy đậm, chữ serif nghiêng vàng ấm và một màu nhấn xanh ngọc — học thuật, tĩnh lặng.
 
 ### [Emerald Editorial](./templates/emerald-editorial/)
 
@@ -127,7 +189,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/emerald-editorial-6.png" width="32.5%" alt="Emerald Editorial — slide 6" />
 </p>
 
-> Magazine-cover business deck: emerald + navy + paper with double-rule masthead ornaments and a heavy Bodoni-style display serif.
+> Deck kinh doanh kiểu bìa tạp chí: xanh ngọc lục, navy và giấy, có đường viền đôi.
 
 ### [Neo-Grid Bold](./templates/neo-grid-bold/)
 
@@ -137,7 +199,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/neo-grid-bold-8.png" width="32.5%" alt="Neo-Grid Bold — slide 8" />
 </p>
 
-> Editorial neo-brutalism with a single neon yellow accent on off-white paper.
+> Phong cách neo-brutalism biên tập, chỉ một màu nhấn vàng neon trên giấy trắng ngà.
 
 ### [Editorial Tri-Tone](./templates/editorial-tri-tone/)
 
@@ -147,7 +209,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/editorial-tri-tone-3.png" width="32.5%" alt="Editorial Tri-Tone — slide 3" />
 </p>
 
-> Three-color editorial system: dusty pink, mustard cream, and deep burgundy, set in Bricolage + Instrument Serif.
+> Ba màu biên tập: hồng phai, kem mù tạt và đỏ burgundy, font Bricolage + Instrument Serif.
 
 ### [Creative Mode](./templates/creative-mode/)
 
@@ -157,7 +219,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/creative-mode-6.png" width="32.5%" alt="Creative Mode — slide 6" />
 </p>
 
-> Cream paper canvas with confident multi-color (green, pink, orange, yellow) accents and Archivo Black display.
+> Nền giấy kem với các mảng màu tự tin (xanh lá, hồng, cam, vàng) và tiêu đề Archivo Black.
 
 ### [Monochrome](./templates/monochrome/)
 
@@ -167,7 +229,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/monochrome-12.png" width="32.5%" alt="Monochrome — slide 12" />
 </p>
 
-> Ivory ledger paper with all-black type; Lora serif headlines, Jost body, no color at all.
+> Giấy ngà như sổ cái, chữ đen hoàn toàn; tiêu đề Lora, thân bài Jost, không một chút màu.
 
 ### [People's Platform (Block & Bold)](./templates/peoples-platform/)
 
@@ -177,7 +239,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/peoples-platform-8.png" width="32.5%" alt="People's Platform (Block & Bold) — slide 8" />
 </p>
 
-> Activist poster energy: blue, orange, red on cream, with Alfa Slab + Caveat Brush.
+> Năng lượng áp phích cổ động: xanh, cam, đỏ trên nền kem, font Alfa Slab + Caveat Brush.
 
 ### [Pink Script — After Hours](./templates/pink-script/)
 
@@ -187,7 +249,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/pink-script-8.png" width="32.5%" alt="Pink Script — After Hours — slide 8" />
 </p>
 
-> Black canvas, hot pink accent, pearl-cream paper, Instrument Serif headlines: late-night editorial luxury.
+> Nền đen, hồng nóng, giấy kem ngọc trai, tiêu đề Instrument Serif — sang trọng kiểu đêm khuya.
 
 ### [8-Bit Orbit](./templates/8-bit-orbit/)
 
@@ -197,7 +259,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/8-bit-orbit-5.png" width="32.5%" alt="8-Bit Orbit — slide 5" />
 </p>
 
-> Pixel-art neon arcade aesthetic on a deep navy void.
+> Pixel art neon kiểu máy chơi game trên nền xanh navy sâu thẳm.
 
 ### [BlockFrame](./templates/block-frame/)
 
@@ -207,7 +269,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/block-frame-8.png" width="32.5%" alt="BlockFrame — slide 8" />
 </p>
 
-> Neobrutalist deck with pastel-neon color blocks and chunky black borders.
+> Neo-brutalism với các khối màu pastel-neon và viền đen dày.
 
 ### [Blue Professional](./templates/blue-professional/)
 
@@ -217,7 +279,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/blue-professional-8.png" width="32.5%" alt="Blue Professional — slide 8" />
 </p>
 
-> Cream paper background with electric cobalt blue accents; clean modern professional.
+> Nền kem với điểm nhấn xanh cobalt; hiện đại, gọn gàng, chuyên nghiệp.
 
 ### [Bold Poster](./templates/bold-poster/)
 
@@ -227,7 +289,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/bold-poster-8.png" width="32.5%" alt="Bold Poster — slide 8" />
 </p>
 
-> Editorial poster aesthetic with massive Shrikhand display and a single fire-engine red accent.
+> Áp phích biên tập với chữ Shrikhand khổng lồ và một màu đỏ xe cứu hoả.
 
 ### [Broadside](./templates/broadside/)
 
@@ -237,7 +299,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/broadside-13.png" width="32.5%" alt="Broadside — slide 13" />
 </p>
 
-> Dark editorial canvas with a single fire orange accent and bilingual Latin/Chinese type stack.
+> Nền tối kiểu báo, một màu cam lửa, hỗ trợ cả chữ Latin lẫn chữ Hán.
 
 ### [Capsule](./templates/capsule/)
 
@@ -247,7 +309,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/capsule-8.png" width="32.5%" alt="Capsule — slide 8" />
 </p>
 
-> Modular pill-shaped cards on warm bone with a full pastel-pop palette.
+> Thẻ bo tròn hình viên thuốc trên nền xương ấm, bảng màu pastel tươi.
 
 ### [Cartesian](./templates/cartesian/)
 
@@ -257,7 +319,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/cartesian-8.png" width="32.5%" alt="Cartesian — slide 8" />
 </p>
 
-> Quiet warm-neutral palette with classical Playfair serifs; tasteful and unhurried.
+> Bảng màu trung tính ấm, chữ serif Playfair cổ điển; nhã nhặn, thong thả.
 
 ### [Coral](./templates/coral/)
 
@@ -267,7 +329,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/coral-8.png" width="32.5%" alt="Coral — slide 8" />
 </p>
 
-> Cream and coral on near-black, set in oversized Bebas Neue.
+> Kem và san hô trên nền gần đen, chữ Bebas Neue cỡ lớn.
 
 ### [Daisy Days](./templates/daisy-days/)
 
@@ -277,7 +339,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/daisy-days-8.png" width="32.5%" alt="Daisy Days — slide 8" />
 </p>
 
-> Cheerful pastel deck with hand-drawn daisies, stars, and rainbows. Friendly, soft, and warm.
+> Pastel vui tươi với hoa cúc, ngôi sao, cầu vồng vẽ tay. Thân thiện, mềm mại, ấm áp.
 
 ### [Grove](./templates/grove/)
 
@@ -287,7 +349,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/grove-8.png" width="32.5%" alt="Grove — slide 8" />
 </p>
 
-> Forest-green canvas with cream type, classical Playfair serifs, and a single rust accent.
+> Nền xanh rừng, chữ kem, serif Playfair cổ điển và một màu nhấn gỉ sắt.
 
 ### [Mat](./templates/mat/)
 
@@ -297,7 +359,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/mat-8.png" width="32.5%" alt="Mat — slide 8" />
 </p>
 
-> Dark sage canvas with bone paper and burnt-orange accent; mid-century modern with wood undertones.
+> Nền xanh sage tối, giấy màu xương, nhấn cam cháy; phong cách mid-century có chút vân gỗ.
 
 ### [Playful](./templates/playful/)
 
@@ -307,7 +369,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/playful-8.png" width="32.5%" alt="Playful — slide 8" />
 </p>
 
-> Sun-warm peach background with Syne display: a friendly indie launch deck.
+> Nền cam đào ấm nắng với tiêu đề Syne: deck ra mắt sản phẩm nhỏ thân thiện.
 
 ### [Raw Grid](./templates/raw-grid/)
 
@@ -317,7 +379,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/raw-grid-8.png" width="32.5%" alt="Raw Grid — slide 8" />
 </p>
 
-> Neo-brutalist deck with thick borders, offset shadows, and a pink/sage/ink palette.
+> Neo-brutalism với viền dày, bóng đổ lệch và bảng màu hồng/sage/mực.
 
 ### [Retro Windows](./templates/retro-windows/)
 
@@ -327,7 +389,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/retro-windows-8.png" width="32.5%" alt="Retro Windows — slide 8" />
 </p>
 
-> Windows 95 chrome: gray title bars, MS Sans Serif, pixel typography, full nostalgia.
+> Giao diện Windows 95: thanh tiêu đề xám, font MS Sans Serif, chữ pixel, hoài niệm trọn vẹn.
 
 ### [Retro Zine](./templates/retro-zine/)
 
@@ -337,7 +399,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/retro-zine-8.png" width="32.5%" alt="Retro Zine — slide 8" />
 </p>
 
-> Beige paper with green accent and Bebas Neue + Caveat: a riso-printed zine in HTML form.
+> Giấy be với màu nhấn xanh lá, Bebas Neue + Caveat: một tạp chí in riso dạng HTML.
 
 ### [Scatterbrain](./templates/scatterbrain/)
 
@@ -347,7 +409,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/scatterbrain-8.png" width="32.5%" alt="Scatterbrain — slide 8" />
 </p>
 
-> Post-it inspired: pastel sticky notes, Caveat handwriting, Shrikhand and Zilla Slab type stack.
+> Lấy cảm hứng từ giấy note: giấy dán pastel, chữ viết tay Caveat, Shrikhand và Zilla Slab.
 
 ### [Signal](./templates/signal/)
 
@@ -357,7 +419,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/signal-8.png" width="32.5%" alt="Signal — slide 8" />
 </p>
 
-> Deep navy canvas with bone paper and a single muted-gold accent; institutional with quiet weight.
+> Nền xanh navy, giấy màu xương và một màu vàng nhạt; nghiêm túc, có sức nặng mà không ồn ào.
 
 ### [Studio](./templates/studio/)
 
@@ -367,7 +429,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/studio-8.png" width="32.5%" alt="Studio — slide 8" />
 </p>
 
-> Black canvas with electric-yellow type; high-voltage design studio aesthetic.
+> Nền đen với chữ vàng điện; phong cách studio thiết kế đầy năng lượng.
 
 ### [Biennale Yellow](./templates/biennale-yellow/)
 
@@ -377,7 +439,7 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/biennale-yellow-8.png" width="32.5%" alt="Biennale Yellow — slide 8" />
 </p>
 
-> Solar yellow on warm parchment with deep indigo serif and atmospheric sun-glow gradients. Dutch-editorial poster energy.
+> Vàng nắng trên giấy da ấm, serif chàm đậm và quầng sáng mặt trời — biên tập kiểu Hà Lan.
 
 ### [Long Table](./templates/long-table/)
 
@@ -387,14 +449,11 @@ All 34 templates. Three slides per template (cover · mid-deck · later) to give
   <img src="./screenshots/long-table-7.png" width="32.5%" alt="Long Table — slide 7" />
 </p>
 
-> Warm cream and rust-red supper-club aesthetic with bold uppercase grotesk headlines, italic Fraunces, and pill-shaped outlined buttons.
+> Kem ấm và đỏ gỉ kiểu câu lạc bộ ẩm thực, tiêu đề in hoa đậm và chữ nghiêng Fraunces.
 
-## License
+## Ghi công & giấy phép
 
-[MIT](./LICENSE) — free to use, modify, and distribute.
-
-## Credits
-
-- Content-density and anti-"AI slop" guidance and the idea of PowerPoint import come from [frontend-slides](https://github.com/zarazhangrui/frontend-slides) (MIT, Zara Zhang).
-- In-browser editing that writes straight into the deck file and `#id` slide links were inspired by [ai-deck-builder](https://github.com/Faris-Alanazi/ai-deck-builder) (MIT).
-
+- deck-kit phát triển từ [beautiful-html-templates](https://github.com/zarazhangrui/beautiful-html-templates) của Zara Zhang (MIT) — 34 mẫu thiết kế là của dự án gốc.
+- Hướng dẫn về mật độ chữ, nguyên tắc chống "AI slop" và ý tưởng nhập PowerPoint lấy từ [frontend-slides](https://github.com/zarazhangrui/frontend-slides) (MIT, Zara Zhang).
+- Chỉnh sửa trực tiếp lưu vào file và link `#id` giữa các slide lấy cảm hứng từ [ai-deck-builder](https://github.com/Faris-Alanazi/ai-deck-builder) (MIT).
+- Giấy phép: [MIT](./LICENSE).

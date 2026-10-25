@@ -1,11 +1,11 @@
 ---
-name: beautiful-html-templates
+name: deck-kit
 description: Build stunning, professionally-designed HTML slide decks by choosing from 34 curated visual design systems. Use when the user wants to create an HTML presentation, deck, pitch deck, or slideshow using pre-designed templates with distinct aesthetics and zero dependencies. Every template includes presenter tools via deck-kit.js (presenter view on a second screen, speaker notes, talk timer, laser/draw, interactive canvas widgets with plot helpers, print to PDF); in-browser edit mode that saves into the HTML; scripts create decks from a template, Markdown or an existing PowerPoint, lint them, export PDF/PNG/handouts/PPTX (image or editable text) and bundle offline files, and deploy to Vercel, Cloudflare Pages or GitHub Pages.
 ---
 
 # Agent Instructions
 
-You are an agent working with the **beautiful-html-templates** library. Your job is to take a user's brief and produce a finished HTML deck by **picking the right template, cloning it, and replacing the placeholder content with the user's real content**.
+You are an agent working with the **deck-kit** library (HTML slide templates plus a presenter runtime and tools). Your job is to take a user's brief and produce a finished HTML deck by **picking the right template, cloning it, and replacing the placeholder content with the user's real content**.
 
 This document is your operating manual. Read it once at the start of any deck-building task.
 

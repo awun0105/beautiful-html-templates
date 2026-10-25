@@ -1,5 +1,5 @@
 {
-  "name": "beautiful-html-templates",
+  "name": "deck-kit",
   "private": true,
   "type": "module",
   "description": "HTML slide templates with a shared presenter runtime (deck-kit).",

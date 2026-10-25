@@ -1,14 +1,28 @@
 {
-  "name": "beautiful-html-templates",
-  "version": "1.0.0",
-  "description": "A library of 34 reusable HTML slide templates designed so that any coding agent can pick the right one and produce a beautiful deck.",
+  "name": "deck-kit",
+  "version": "2.0.0",
+  "description": "HTML slide templates any coding agent can use to build a beautiful deck, with a presenter runtime (presenter view, notes, timer, edit mode, interactive widgets) and tools to export PDF/PNG/PPTX, import PowerPoint and deploy.",
   "skills": "./",
   "author": {
-    "name": "zarazhangrui",
-    "url": "https://github.com/zarazhangrui"
+    "name": "awun0105",
+    "url": "https://github.com/awun0105"
   },
-  "homepage": "https://github.com/zarazhangrui/beautiful-html-templates",
-  "repository": "https://github.com/zarazhangrui/beautiful-html-templates",
+  "contributors": [
+    {
+      "name": "Zara Zhang (original beautiful-html-templates)",
+      "url": "https://github.com/zarazhangrui"
+    }
+  ],
+  "homepage": "https://github.com/awun0105/deck-kit",
+  "repository": "https://github.com/awun0105/deck-kit",
   "license": "MIT",
-  "keywords": ["presentations", "slides", "html", "design", "templates"]
+  "keywords": [
+    "presentations",
+    "slides",
+    "html",
+    "design",
+    "templates",
+    "pptx",
+    "deploy"
+  ]
 }

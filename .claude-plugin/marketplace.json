@@ -1,18 +1,26 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "beautiful-html-templates",
-  "description": "Library of 34 reusable HTML slide templates with curated visual design systems.",
+  "name": "deck-kit",
+  "description": "34 HTML slide templates with a presenter runtime (notes, presenter view, edit mode) and tools to export, import and deploy decks.",
   "owner": {
-    "name": "zarazhangrui",
-    "url": "https://github.com/zarazhangrui"
+    "name": "awun0105",
+    "url": "https://github.com/awun0105"
   },
   "plugins": [
     {
-      "name": "beautiful-html-templates",
-      "description": "Library of 34 reusable HTML slide templates with curated visual design systems.",
+      "name": "deck-kit",
+      "description": "34 HTML slide templates with a presenter runtime (notes, presenter view, edit mode) and tools to export, import and deploy decks.",
       "source": "./",
       "category": "productivity",
-      "tags": ["presentations", "slides", "html", "design", "templates"]
+      "tags": [
+        "presentations",
+        "slides",
+        "html",
+        "design",
+        "templates",
+        "pptx",
+        "deploy"
+      ]
     }
   ]
 }
